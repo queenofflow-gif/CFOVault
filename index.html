@@ -598,17 +598,124 @@ function loadDemo(){
   go();
 }
 
+
+
+// ── STATE TAX RATES ───────────────────────────────────────────────
+var STATE_TAXES = {
+  'AL':{'name':'Alabama','rate':5.0},
+  'AK':{'name':'Alaska','rate':0},
+  'AZ':{'name':'Arizona','rate':2.5},
+  'AR':{'name':'Arkansas','rate':4.7},
+  'CA':{'name':'California','rate':9.3},
+  'CO':{'name':'Colorado','rate':4.4},
+  'CT':{'name':'Connecticut','rate':6.99},
+  'DE':{'name':'Delaware','rate':6.6},
+  'FL':{'name':'Florida','rate':0},
+  'GA':{'name':'Georgia','rate':5.49},
+  'HI':{'name':'Hawaii','rate':7.9},
+  'ID':{'name':'Idaho','rate':5.8},
+  'IL':{'name':'Illinois','rate':4.95},
+  'IN':{'name':'Indiana','rate':3.05},
+  'IA':{'name':'Iowa','rate':5.7},
+  'KS':{'name':'Kansas','rate':5.7},
+  'KY':{'name':'Kentucky','rate':4.5},
+  'LA':{'name':'Louisiana','rate':4.25},
+  'ME':{'name':'Maine','rate':7.15},
+  'MD':{'name':'Maryland','rate':5.75},
+  'MA':{'name':'Massachusetts','rate':5.0},
+  'MI':{'name':'Michigan','rate':4.25},
+  'MN':{'name':'Minnesota','rate':9.85},
+  'MS':{'name':'Mississippi','rate':5.0},
+  'MO':{'name':'Missouri','rate':4.95},
+  'MT':{'name':'Montana','rate':6.75},
+  'NE':{'name':'Nebraska','rate':6.84},
+  'NV':{'name':'Nevada','rate':0},
+  'NH':{'name':'New Hampshire','rate':0},
+  'NJ':{'name':'New Jersey','rate':10.75},
+  'NM':{'name':'New Mexico','rate':5.9},
+  'NY':{'name':'New York','rate':10.9},
+  'NC':{'name':'North Carolina','rate':4.75},
+  'ND':{'name':'North Dakota','rate':2.5},
+  'OH':{'name':'Ohio','rate':3.99},
+  'OK':{'name':'Oklahoma','rate':4.75},
+  'OR':{'name':'Oregon','rate':9.9},
+  'PA':{'name':'Pennsylvania','rate':3.07},
+  'RI':{'name':'Rhode Island','rate':5.99},
+  'SC':{'name':'South Carolina','rate':6.5},
+  'SD':{'name':'South Dakota','rate':0},
+  'TN':{'name':'Tennessee','rate':0},
+  'TX':{'name':'Texas','rate':0},
+  'UT':{'name':'Utah','rate':4.65},
+  'VT':{'name':'Vermont','rate':8.75},
+  'VA':{'name':'Virginia','rate':5.75},
+  'WA':{'name':'Washington','rate':0},
+  'WV':{'name':'West Virginia','rate':6.5},
+  'WI':{'name':'Wisconsin','rate':7.65},
+  'WY':{'name':'Wyoming','rate':0}
+};
+function stateOptions(sel){
+  return Object.entries(STATE_TAXES).sort(function(a,b){return a[1].name.localeCompare(b[1].name);}).map(function(e){
+    return'<option value="'+e[0]+'" '+(sel===e[0]?'selected':'')+'>'+e[1].name+' ('+(e[1].rate===0?'No income tax':e[1].rate+'%')+')</option>';
+  }).join('');
+}
+
+// ── PERIOD SELECTOR ───────────────────────────────────────────────
+var periodData = {revenue:0,cogs:0,labor:0,opex:0}; // holds period-filtered values
+
+function switchPeriod(val){
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var moMap={q1:[0,1,2],q2:[3,4,5],q3:[6,7,8],q4:[9,10,11]};
+  var badge=$('periodBadge'), lbl=$('periodLabel');
+
+  if(val==='annual'){
+    periodData={revenue:S.revenue,cogs:S.cogs,labor:S.labor,opex:S.opex};
+    if(badge)badge.style.display='none';
+    if(lbl)lbl.textContent='';
+  } else if(moMap[val]){
+    var idxs=moMap[val];
+    periodData=calcPeriodData(idxs);
+    if(badge)badge.style.display='block';
+    if(lbl)lbl.textContent=MO[idxs[0]]+' – '+MO[idxs[idxs.length-1]];
+  } else {
+    var moIdx=parseInt(val.replace('mo',''))-1;
+    periodData=calcPeriodData([moIdx]);
+    if(badge)badge.style.display='block';
+    if(lbl)lbl.textContent=MO[moIdx]+' only';
+  }
+  renderOvData();
+}
+
+function calcPeriodData(idxs){
+  // If we have monthly data use it, otherwise prorate annual
+  var months=idxs.length;
+  if(S.cfMonths&&S.cfMonths.length>=Math.max.apply(null,idxs)+1){
+    var rev=0,exp=0;
+    idxs.forEach(function(i){rev+=S.cfMonths[i].revenue||0;exp+=S.cfMonths[i].expenses||0;});
+    var cogsShare=S.cogs?(S.cogs/(S.cogs+S.labor+S.opex)):0.5;
+    var laborShare=S.labor?(S.labor/(S.cogs+S.labor+S.opex)):0.35;
+    var opexShare=S.opex?(S.opex/(S.cogs+S.labor+S.opex)):0.15;
+    return{revenue:Math.round(rev),cogs:Math.round(exp*cogsShare),labor:Math.round(exp*laborShare),opex:Math.round(exp*opexShare)};
+  }
+  var ratio=months/12;
+  return{revenue:Math.round(S.revenue*ratio),cogs:Math.round(S.cogs*ratio),labor:Math.round(S.labor*ratio),opex:Math.round(S.opex*ratio)};
+}
+
 // ── CALCULATIONS ──────────────────────────────────────────────────
 function getAdj(){
   var c1=+(($('sr1')&&$('sr1').value)||0)/100;
   var c2=+(($('sr2')&&$('sr2').value)||0)/100;
   var c3=+(($('sr3')&&$('sr3').value)||0)/100;
   var c4=+(($('sr4')&&$('sr4').value)||0)/100;
-  var aR=S.revenue*(1+c1), aC=S.cogs*(1-c2), aL=S.labor*(1-c3), aO=S.opex*(1-c4);
-  var bT=S.cogs+S.labor, aT=aC+aL;
-  var bGM=S.revenue-bT, aGM=aR-aT;
-  var bGMp=S.revenue?bGM/S.revenue:0, aGMp=aR?aGM/aR:0;
-  var bNet=bGM-S.opex, aNet=aGM-aO;
+  // Use period-filtered data if a period is selected
+  var pR=periodData&&periodData.revenue>0?periodData.revenue:S.revenue;
+  var pC=periodData&&periodData.revenue>0?periodData.cogs:S.cogs;
+  var pL=periodData&&periodData.revenue>0?periodData.labor:S.labor;
+  var pO=periodData&&periodData.revenue>0?periodData.opex:S.opex;
+  var aR=pR*(1+c1), aC=pC*(1-c2), aL=pL*(1-c3), aO=pO*(1-c4);
+  var bT=pC+pL, aT=aC+aL;
+  var bGM=pR-bT, aGM=aR-aT;
+  var bGMp=pR?bGM/pR:0, aGMp=aR?aGM/aR:0;
+  var bNet=bGM-pO, aNet=aGM-aO;
   return{c1,c2,c3,c4,aR,aC,aL,aO,aT,aGM,aGMp,aNet,bT,bGM,bGMp,bNet};
 }
 
@@ -617,6 +724,7 @@ function go(){
   // Make sure IND is set
   if(!IND||!IND.gm) IND = INDS[S.industry]||INDS.other;
   IND.key = S.industry;
+  periodData={revenue:S.revenue,cogs:S.cogs,labor:S.labor,opex:S.opex};
   $('content').classList.add('on');
   ['btnSave','btnExport','btnImport','btnPDF','btnReset'].forEach(function(id){$(id).style.display='block';});
   $('snapSec').textContent='Snapshot — '+(S.bizName||IND.l)+(S.period?' · '+S.period:'');
@@ -633,7 +741,7 @@ function buildToolNav(){
     {k:'pricing',  l:'Pricing',         i:'🏷️'},
     {k:'labor',    l:'Labor & Staff',   i:'👥'},
     {k:'tax',      l:'Tax Estimate',    i:'🧾'},
-    {k:'runway',   l:'Runway',          i:'🛫'}
+    {k:'runway',   l:'Runway',          i:'📉'}
   ];
   var nav=$('toolNav'); nav.innerHTML='';
   TOOLS.forEach(function(t){
@@ -738,7 +846,24 @@ function renderInsights(){
 function renderOverview(){
   var el=$('tp-overview'); if(!el) return;
   var a=getAdj();
-  el.innerHTML='<div class="tcol" style="margin-bottom:1.5rem">'+
+  el.innerHTML=
+    '<div class="sec">Period selector</div>'+
+    '<div class="panel" style="margin-bottom:1.5rem">'+
+      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
+        '<div style="font-size:12px;color:var(--mut);font-weight:500">View period:</div>'+
+        '<select id="periodSel" onchange="switchPeriod(this.value)" style="border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer;min-width:200px">'+
+          '<option value="annual">Full year (annual)</option>'+
+          '<option value="q1">Q1 (Jan–Mar)</option>'+
+          '<option value="q2">Q2 (Apr–Jun)</option>'+
+          '<option value="q3">Q3 (Jul–Sep)</option>'+
+          '<option value="q4">Q4 (Oct–Dec)</option>'+
+          ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(function(m,i){return'<option value="mo'+(i+1)+'">'+m+'</option>';}).join('')+
+        '</select>'+
+        '<span id="periodLabel" style="font-size:12px;color:var(--sub)"></span>'+
+        '<span id="periodBadge" style="font-size:11px;background:var(--accL);color:var(--acc);padding:2px 8px;border-radius:12px;font-weight:500;display:none">Partial period</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="tcol" style="margin-bottom:1.5rem">'+
     '<div class="panel" style="margin-bottom:0">'+
       '<div class="ptitle">Scenario levers</div>'+
       '<div class="psub">Drag to model — P&L updates live</div>'+
@@ -1011,15 +1136,27 @@ function renderTax(){
     '<div class="mc cw"><div class="ml">Quarterly payment</div><div class="mv va">'+fmt(qtr)+'</div><div class="ms">Every 3 months</div></div>'+
     '<div class="mc cw"><div class="ml">Effective tax rate</div><div class="mv va">'+pc(eff)+'</div><div class="ms">Set aside this % of profit</div></div>'+
     '<div class="mc '+(owed>0?'cr':'cg')+'"><div class="ml">'+(owed>0?'Still owed':'Overpaid')+'</div><div class="mv '+(owed>0?'vr':'vg')+'">'+fmt(Math.abs(owed))+'</div><div class="ms">After '+fmt(paid)+' paid</div></div></div>'+
-    '<div class="twocol"><div class="panel"><div class="ptitle">Adjust tax inputs</div>'+
-    '<div class="ig"><label>Filing status</label><select id="txStatus" oninput="S.filingStatus=this.value;renderTax()"><option value="single" '+(S.filingStatus==='single'?'selected':'')+'>Single</option><option value="married_joint" '+(S.filingStatus==='married_joint'?'selected':'')+'>Married Filing Jointly</option></select></div>'+
+    '<div class="twocol"><div class="panel"><div class="ptitle">Tax inputs</div>'+
+    '<div class="ig"><label>Business structure</label><select id="txBizType" oninput="S.bizType=this.value;renderTax()" style="font-family:var(--sans)">'+
+      '<option value="sole_prop" '+((!S.bizType||S.bizType==='sole_prop')?'selected':'')+'>Sole Proprietor / Single-Member LLC</option>'+
+      '<option value="s_corp" '+(S.bizType==='s_corp'?'selected':'')+'>S-Corporation</option>'+
+      '<option value="c_corp" '+(S.bizType==='c_corp'?'selected':'')+'>C-Corporation</option>'+
+      '<option value="partnership" '+(S.bizType==='partnership'?'selected':'')+'>Partnership / Multi-Member LLC</option>'+
+    '</select></div>'+
+    '<div class="ig"><label>Filing status</label><select id="txStatus" oninput="S.filingStatus=this.value;renderTax()" style="font-family:var(--sans)"><option value="single" '+(S.filingStatus==='single'?'selected':'')+'>Single</option><option value="married_joint" '+(S.filingStatus==='married_joint'?'selected':'')+'>Married Filing Jointly</option><option value="hoh" '+(S.filingStatus==='hoh'?'selected':'')+'>Head of Household</option></select></div>'+
+    '<div class="ig"><label>State</label><select id="txState" oninput="S.stateCode=this.value;S.stateRate=STATE_TAXES[this.value]?STATE_TAXES[this.value].rate:0;renderTax()" style="font-family:var(--sans)">'+stateOptions(S.stateCode||'TX')+'</select></div>'+
     '<div class="ig"><label>Other personal income ($)</label><input type="number" value="'+(S.otherIncome||0)+'" oninput="S.otherIncome=+this.value;renderTax()"></div>'+
-    '<div class="ig"><label>State tax rate (%)</label><input type="number" value="'+(S.stateRate||5)+'" oninput="S.stateRate=+this.value;renderTax()"></div>'+
     '<div class="ig"><label>Tax payments made this year ($)</label><input type="number" value="'+(S.ytdTaxPaid||0)+'" oninput="S.ytdTaxPaid=+this.value;renderTax()"></div>'+
     '<div class="ibox warn" style="margin-top:.75rem"><div class="irow"><div class="idot"></div><span>Set aside <strong>'+pc(Math.min(.35,eff*1.1))+'</strong> of every dollar of profit immediately. Move it to a separate savings account before spending anything else.</span></div></div>'+
     '</div><div class="panel"><div class="ptitle">Quarterly payment schedule</div>'+
     '<table id="txTable"></table><hr>'+
-    '<div style="font-size:12px;color:var(--mut);line-height:1.8"><strong style="color:var(--txt)">Breakdown:</strong><br>Self-employment tax: '+fmt(seTax)+'<br>Federal income tax: '+fmt(fedTax)+'<br>State tax ('+(S.stateRate||5)+'%): '+fmt(stateTax)+'</div>'+
+    '<div style="font-size:12px;color:var(--mut);line-height:1.8"><strong style="color:var(--txt)">Breakdown ('+(!S.bizType||S.bizType==='sole_prop'?'Sole Prop/LLC':S.bizType==='s_corp'?'S-Corp':S.bizType==='c_corp'?'C-Corp':'Partnership')+'):</strong><br>'+
+    ((!S.bizType||S.bizType==='sole_prop'||S.bizType==='partnership')?'Self-employment tax: '+fmt(seTax)+'<br>':'Payroll taxes (est.): '+fmt(seTax)+'<br>')+
+    'Federal income tax: '+fmt(fedTax)+'<br>'+
+    'State tax ('+(S.stateRate||0)+'% — '+(STATE_TAXES[S.stateCode||'TX']?STATE_TAXES[S.stateCode||'TX'].name:'your state')+'): '+fmt(stateTax)+'<br>'+
+    (S.bizType==='c_corp'?'<span style="color:var(--amb)">C-Corp: 21% flat corporate rate + dividends taxed again at personal rate (double taxation)</span><br>':'')+
+    (S.bizType==='s_corp'?'<span style="color:var(--acc)">S-Corp: Pass-through taxation. Salary portion subject to payroll tax; distributions are not. Consult a CPA for S-Corp election timing.</span><br>':'')+
+    '</div>'+
     '</div></div>';
 
   var qtrs=[['Q1','April 15'],['Q2','June 17'],['Q3','Sep 16'],['Q4','Jan 15']];
@@ -1068,7 +1205,23 @@ function runAI(){
   var btn=$('aiBtn'),load=$('aiLoad'),out=$('aiOut');
   btn.disabled=true; load.classList.add('show'); out.classList.remove('show'); out.innerHTML='';
   var a=getAdj();
-  var prompt='Analyze the finances of this '+IND.l+' business: "'+(S.bizName||'the business')+'".\n\nP&L (annual):\n- '+IND.tR+': $'+Math.round(S.revenue).toLocaleString()+'\n- '+IND.tC+': $'+Math.round(S.cogs).toLocaleString()+'\n- '+IND.tL+': $'+Math.round(S.labor).toLocaleString()+'\n- Gross margin: $'+Math.round(a.bGM).toLocaleString()+' ('+pc(a.bGMp)+') — benchmark '+pc(IND.gm)+'\n- '+IND.tO+': $'+Math.round(S.opex).toLocaleString()+'\n- Net margin: $'+Math.round(a.bNet).toLocaleString()+' ('+pc(S.revenue?a.bNet/S.revenue:0)+') — benchmark '+pc(IND.net)+'\n'+(S.staff.length?'\nStaff:\n'+S.staff.map(function(s){return'- '+s.name+': $'+Math.round(s.total||0).toLocaleString();}).join('\n'):'')+'\n\nGive: (1) health assessment, (2) top 3 risks as bullets, (3) 3 specific actions this month. Label each section with **bold header**. Plain language, no jargon.';
+  var indContext={
+    restaurant:'Food cost % (target 28-32%), labor % (target 30-35%), prime cost target under 65%, revenue per cover, table turns per service.',
+    retail:'Gross margin % (target 40-55%), inventory turnover (target 4-8x/yr), sell-through rate, revenue per sq ft, shrinkage %.',
+    agency:'Utilization rate (target 70-80%), effective billing rate, project margin %, client concentration risk, revenue per employee.',
+    saas:'MRR growth, churn rate (target under 5%/yr), CAC payback period, LTV:CAC ratio (target 3:1+), net revenue retention, gross margin (target 70-85%).',
+    healthcare:'Collections rate (target 90%+), cost per visit, days in AR (target under 35), payer mix, overhead ratio, revenue per physician.',
+    construction:'Job cost variance, backlog months, equipment utilization, change order rate, working capital ratio, bonding capacity.',
+    realestate:'GCI per agent, transactions per month, average commission, listing-to-close ratio, cost per transaction, agent productivity.',
+    manufacturing:'OEE %, COGS as % of sales, scrap rate, inventory turns, on-time delivery %, labor efficiency ratio.',
+    fitness:'Member retention rate (target 70%+), revenue per member, cost per acquisition, attrition rate, capacity utilization %.',
+    logistics:'Revenue per mile, driver utilization %, fuel cost %, on-time delivery %, empty mile %, asset utilization.',
+    law:'Realization rate (target 85%+), collection rate, billable hours per attorney, revenue per lawyer, overhead ratio.',
+    msp:'Gross margin per account (target 30-38%), MSP contractor cost as % of revenue (target under 12%), staff allocation efficiency, contract renewal rate, cost per managed endpoint.',
+    other:'Gross margin %, net margin %, operating expense ratio, working capital cycle, cash conversion cycle.'
+  };
+  var ctx=indContext[S.industry]||indContext.other;
+  var prompt='You are a CFO advisor reviewing a '+IND.l+' business called "'+(S.bizName||'the business')+'". Benchmark context: '+ctx+'\n\nP&L (annual):\n- '+IND.tR+': $'+Math.round(S.revenue).toLocaleString()+'\n- '+IND.tC+': $'+Math.round(S.cogs).toLocaleString()+' ('+pc(S.revenue?S.cogs/S.revenue:0)+' of revenue)\n- '+IND.tL+': $'+Math.round(S.labor).toLocaleString()+' ('+pc(S.revenue?S.labor/S.revenue:0)+' of revenue)\n- Gross margin: $'+Math.round(a.bGM).toLocaleString()+' ('+pc(a.bGMp)+') — benchmark '+pc(IND.gm)+'\n- '+IND.tO+': $'+Math.round(S.opex).toLocaleString()+'\n- Net margin: $'+Math.round(a.bNet).toLocaleString()+' ('+pc(S.revenue?a.bNet/S.revenue:0)+') — benchmark '+pc(IND.net)+'\n'+(S.staff.length?'\nStaff:\n'+S.staff.map(function(s){return'- '+s.name+': $'+Math.round(s.total||0).toLocaleString();}).join('\n'):'')+'\n\nAs a CFO: (1) 2-sentence health assessment using industry benchmarks above, (2) top 3 risks with specific numbers, (3) 3 CFO-level actions this month with exact targets. Label each section **bold header**. Direct, no filler words.'
   fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,system:'You are a CFO advisor for small business owners. Direct, plain language. Bold key terms with **asterisks**. Label sections with **bold headers**.',messages:[{role:'user',content:prompt}]})})
   .then(function(r){return r.json();})
   .then(function(d){renderAI(d.content&&d.content[0]&&d.content[0].text||'No response.',out);})
@@ -1165,7 +1318,8 @@ function exportPDF(){
 }
 
 function resetApp(){
-  S={bizName:'',industry:'other',period:'',notes:'',revenue:0,cogs:0,labor:0,opex:0,staff:[],msp:[],targetMargin:35,costPerUnit:0,competitorPrice:0,fixedCosts:0,variableCostPct:0,pricePerUnit:0,cashOnHand:0,currentCash:0,avgMonthlyBurn:0,filingStatus:'single',stateRate:5,otherIncome:0,ytdTaxPaid:0,cfMonths:[]};
+  periodData={revenue:0,cogs:0,labor:0,opex:0};
+  S={bizName:'',industry:'other',period:'',notes:'',revenue:0,cogs:0,labor:0,opex:0,staff:[],msp:[],targetMargin:35,costPerUnit:0,competitorPrice:0,fixedCosts:0,variableCostPct:0,pricePerUnit:0,cashOnHand:0,currentCash:0,avgMonthlyBurn:0,filingStatus:'single',stateRate:0,stateCode:'TX',bizType:'sole_prop',otherIncome:0,ytdTaxPaid:0,cfMonths:[]};
   IND=INDS.other; IND.key='other'; AT='overview'; PT=[];
   Object.values(Charts).forEach(function(ch){try{ch.destroy();}catch(e){}});Charts={};
   $('content').classList.remove('on');
