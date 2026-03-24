@@ -484,13 +484,62 @@ function parseXL(file){
       if(!S.costPerUnit&&S.cogs) S.costPerUnit=Math.round((S.cogs+S.labor)/12);
       if(!S.pricePerUnit&&S.revenue) S.pricePerUnit=Math.round(S.revenue/12);
       if(!S.targetMargin) S.targetMargin=Math.round(IND.gm*100);
-      // Monthly data
+      // Monthly data + automatic period detection
       var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      if(merged.revenue&&merged.revenue.moArr&&merged.revenue.moArr.length>=3){
-        var rMo=merged.revenue.moArr, cMo=merged.cogs&&merged.cogs.moArr||[], lMo=merged.labor&&merged.labor.moArr||[], oMo=merged.opex&&merged.opex.moArr||[];
-        S.cfMonths=rMo.slice(0,12).map(function(r,i){
-          return{month:MO[i]||'Mo'+(i+1),revenue:Math.round(Math.abs(r)),expenses:Math.round(Math.abs((cMo[i]||0)+(lMo[i]||0)+(oMo[i]||0))||((S.cogs+S.labor+S.opex)/12))};
+      if(merged.revenue&&merged.revenue.moArr&&merged.revenue.moArr.length>=1){
+        var rMo=merged.revenue.moArr;
+        var cMo=merged.cogs&&merged.cogs.moArr||[];
+        var lMo=merged.labor&&merged.labor.moArr||[];
+        var oMo=merged.opex&&merged.opex.moArr||[];
+
+        // Count how many months actually have non-zero revenue
+        var actualMonths=rMo.filter(function(v){return Math.abs(v)>100;}).length;
+        if(actualMonths===0) actualMonths=rMo.length;
+
+        // Build monthly records for only the months that exist
+        S.cfMonths=rMo.slice(0,actualMonths).map(function(r,i){
+          var exp=Math.abs((cMo[i]||0)+(lMo[i]||0)+(oMo[i]||0));
+          if(!exp) exp=Math.round((S.cogs+S.labor+S.opex)/actualMonths);
+          return{month:MO[i]||'Mo'+(i+1),revenue:Math.round(Math.abs(r)),expenses:Math.round(exp)};
         });
+
+        // Detect if the stored totals are the raw partial period (not already annualized)
+        // Key check: if sum of monthly revenue closely matches stored S.revenue,
+        // then the file did NOT have a separate annual total col — it's a partial year
+        var moSum=rMo.slice(0,actualMonths).reduce(function(a,v){return a+Math.abs(v);},0);
+        var hasAnnualCol=merged.revenue.score>0; // scored higher = had annual col
+        var looksPartial=actualMonths<12&&Math.abs(moSum-S.revenue)/Math.max(S.revenue,1)<0.08;
+
+        if(looksPartial&&!hasAnnualCol){
+          // File has N months of data - annualize everything for benchmarks
+          var ratio=12/actualMonths;
+          S.rawRevenue=Math.round(S.revenue);
+          S.rawCogs   =Math.round(S.cogs);
+          S.rawLabor  =Math.round(S.labor);
+          S.rawOpex   =Math.round(S.opex);
+          S.periodMonths=actualMonths;
+          // Annualized values used for all benchmark/health score calculations
+          S.revenue=Math.round(S.revenue*ratio);
+          S.cogs   =Math.round(S.cogs*ratio);
+          S.labor  =Math.round(S.labor*ratio);
+          S.opex   =Math.round(S.opex*ratio);
+        } else if(actualMonths<12&&hasAnnualCol){
+          // File had monthly columns AND an annual total — annual total is already correct
+          // but note how many months were active
+          S.periodMonths=actualMonths;
+          S.rawRevenue=0; // no need to show raw — annual col is the real figure
+        } else {
+          S.periodMonths=12;
+          S.rawRevenue=0;
+        }
+
+        // Re-derive dependent fields from (now correct) annualized figures
+        if(!S.avgMonthlyBurn||S.avgMonthlyBurn<100)
+          S.avgMonthlyBurn=Math.round((S.cogs+S.labor+S.opex)/12);
+        if(!S.cashOnHand) S.cashOnHand=Math.round(S.revenue*.08);
+        if(!S.currentCash) S.currentCash=S.cashOnHand;
+        if(!S.fixedCosts) S.fixedCosts=Math.round(S.opex/12*.7);
+        if(!S.variableCostPct) S.variableCostPct=Math.round(S.cogs/Math.max(S.revenue,1)*100*.45);
       }
 
       // Staff parser
@@ -562,7 +611,8 @@ function parseXL(file){
       if(found.length===0){
         showStatus('err','No financial data found. Check that your file has rows labeled Revenue, Cost of Goods, Labor/Payroll, and Expenses with numeric values.');
       } else {
-        showStatus('ok','Imported: '+found.join(', ')+(S.staff.length?' · '+S.staff.length+' staff members':'')+(S.msp.length?' · '+S.msp.length+' contractors':''));
+        var pNote=S.periodMonths&&S.periodMonths<12&&S.rawRevenue>0?' · '+S.periodMonths+'-month file — annualized to '+fmt(S.revenue)+'/yr':'';
+        showStatus('ok','Imported: '+found.join(', ')+(S.staff.length?' · '+S.staff.length+' staff':'')+(S.msp.length?' · '+S.msp.length+' contractors':'')+pNote);
         if(found.length<3) showStatus('warn','Partial import ('+found.length+' of 4 fields). Some tools will use estimates for missing fields.');
         $('onboard').style.display='none';
         go();
@@ -664,13 +714,17 @@ var periodData = {revenue:0,cogs:0,labor:0,opex:0}; // holds period-filtered val
 
 function switchPeriodRange(){
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var from=parseInt($('periodFrom')&&$('periodFrom').value||0);
-  var to=parseInt($('periodTo')&&$('periodTo').value||11);
-  // Ensure from <= to
-  if(from>to){ to=from; if($('periodTo')) $('periodTo').value=from; }
+  var fromEl=$('periodFrom'), toEl=$('periodTo');
+  var from=parseInt(fromEl&&fromEl.value||0);
+  var toRaw=parseInt(toEl&&toEl.value||11);
+  // -1 means single month (no end range)
+  var to=toRaw===-1?from:toRaw;
+  // If to is less than from (and not -1), set to = from
+  if(to<from){ to=from; if(toEl&&toRaw!==-1) toEl.value=from; }
   var idxs=[];
   for(var i=from;i<=to;i++) idxs.push(i);
   var isFullYear=(from===0&&to===11);
+  var isSingle=(toRaw===-1||from===to);
   var badge=$('periodBadge'), lbl=$('periodLabel');
   if(isFullYear){
     periodData={revenue:S.revenue,cogs:S.cogs,labor:S.labor,opex:S.opex};
@@ -679,7 +733,7 @@ function switchPeriodRange(){
   } else {
     periodData=calcPeriodData(idxs);
     if(badge) badge.style.display='block';
-    if(lbl) lbl.textContent=MO[from]+(from===to?'':' – '+MO[to])+' ('+idxs.length+' month'+(idxs.length>1?'s':'')+')';
+    if(lbl) lbl.textContent=isSingle?MO[from]+' only':MO[from]+' – '+MO[to]+' ('+idxs.length+' months)';
   }
   renderOvData();
 }
@@ -739,7 +793,13 @@ function go(){
   periodData={revenue:S.revenue,cogs:S.cogs,labor:S.labor,opex:S.opex};
   $('content').classList.add('on');
   ['btnSave','btnExport','btnImport','btnPDF','btnReset'].forEach(function(id){$(id).style.display='block';});
-  $('snapSec').textContent='Snapshot — '+(S.bizName||IND.l)+(S.period?' · '+S.period:'');
+  var pLabel='';
+  if(S.periodMonths&&S.periodMonths<12){
+    pLabel=' · '+S.periodMonths+'-month data (annualized)';
+  } else if(S.period){
+    pLabel=' · '+S.period;
+  }
+  $('snapSec').textContent='Snapshot — '+(S.bizName||IND.l)+pLabel;
   $('benchInd').textContent=IND.l;
   buildToolNav();
   render();
@@ -978,8 +1038,8 @@ function renderOverview(){
         '<select id="periodFrom" onchange="switchPeriodRange()" style="border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer">'+
           '<option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>'+
         '</select>'+
-        '<span style="font-size:12px;color:var(--sub)">to</span>'+
         '<select id="periodTo" onchange="switchPeriodRange()" style="border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer">'+
+          '<option value="-1">— (single month)</option>'+
           '<option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11" selected>Dec</option>'+
         '</select>'+
         '<button onclick="resetPeriod()" style="background:var(--surf2);border:1px solid var(--bdrS);color:var(--mut);border-radius:7px;padding:5px 11px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:500">Full year</button>'+
@@ -1037,6 +1097,17 @@ function renderOvData(){
   var isFullYear=(from===0&&to===11)||(!$('periodFrom'));
   var periodLabel=isFullYear?'Year (full)':MO[from]+(from===to?'':' – '+MO[to]);
   // P&L table
+  // Build raw value map for partial-year files
+  var rawTotC=(S.rawCogs||0)+(S.rawLabor||0);
+  var rawGMC=(S.rawRevenue||0)-rawTotC;
+  var rawMap={};
+  rawMap[IND.tR]=S.rawRevenue||0;
+  rawMap[IND.tC]=S.rawCogs||0;
+  rawMap[IND.tL]=S.rawLabor||0;
+  rawMap['Total COGS']=rawTotC;
+  rawMap['Gross margin']=rawGMC;
+  rawMap[IND.tO]=S.rawOpex||0;
+  rawMap['Net margin']=rawGMC-(S.rawOpex||0);
   var rows=[
     {l:IND.tR,      b:S.revenue, adj:a.aR,   lib:false},
     {l:IND.tC,      b:S.cogs,    adj:a.aC,   lib:true},
@@ -1047,7 +1118,7 @@ function renderOvData(){
     {l:'Net margin', b:a.bNet,   adj:a.aNet, lib:false, tot:true}
   ];
   var t='<thead><tr><th>Line item</th>'+
-      '<th class="tr" style="color:var(--blu)">Year (annual)</th>'+
+      '<th class="tr" style="color:var(--blu)">'+(S.periodMonths&&S.periodMonths<12?'Annualized ('+S.periodMonths+' mo)':'Year (annual)')+'</th>'+
       '<th class="tr" style="color:var(--acc)">'+periodLabel+'</th>'+
       '<th class="tr">Change</th></tr></thead><tbody>';
   rows.forEach(function(r){
@@ -1062,10 +1133,12 @@ function renderOvData(){
       'Total COGS':S.cogs+S.labor, 'Gross margin':S.revenue-(S.cogs+S.labor),
       [IND.tO]:S.opex, 'Net margin':S.revenue-(S.cogs+S.labor)-S.opex
     }[r.l]||r.b);
+    var dispAdj=S.rawRevenue&&S.rawRevenue>0&&isFullYear?(rawMap&&rawMap[r.l]!==undefined?rawMap[r.l]:r.adj):r.adj;
+    var d2=dispAdj-yearVal,g2=r.lib?d2<0:d2>0,dc2=d2===0?'':(g2?'vg':'vr');
     t+='<tr class="'+cls+'"><td class="tmu">'+r.l+ps+'</td>'+
       '<td class="tr tm" style="color:var(--blu)">'+(yearVal<0?'-':'')+fmt(yearVal)+'</td>'+
-      '<td class="tr tm '+(isM?(r.adj<0?'vr':'vg'):'')+'">'+(r.adj<0?'-':'')+fmt(r.adj)+'</td>'+
-      '<td class="tr tm '+dc+'">'+(d===0?'—':(d>0?'+':'-')+fmt(Math.abs(d)))+'</td></tr>';
+      '<td class="tr tm '+(isM?(dispAdj<0?'vr':'vg'):'')+'">'+(dispAdj<0?'-':'')+fmt(dispAdj)+'</td>'+
+      '<td class="tr tm '+dc2+'">'+(d2===0?'—':(d2>0?'+':'-')+fmt(Math.abs(d2)))+'</td></tr>';
   });
   if($('plTable')) $('plTable').innerHTML=t+'</tbody>';
   // Chart
@@ -1461,7 +1534,7 @@ function exportPDF(){
 
 function resetApp(){
   periodData={revenue:0,cogs:0,labor:0,opex:0};
-  S={bizName:'',industry:'other',period:'',notes:'',revenue:0,cogs:0,labor:0,opex:0,staff:[],msp:[],targetMargin:35,costPerUnit:0,competitorPrice:0,fixedCosts:0,variableCostPct:0,pricePerUnit:0,cashOnHand:0,currentCash:0,avgMonthlyBurn:0,filingStatus:'single',stateRate:0,stateCode:'TX',bizType:'sole_prop',otherIncome:0,ytdTaxPaid:0,cfMonths:[]};
+  S={bizName:'',industry:'other',period:'',notes:'',revenue:0,cogs:0,labor:0,opex:0,rawRevenue:0,rawCogs:0,rawLabor:0,rawOpex:0,periodMonths:12,staff:[],msp:[],targetMargin:35,costPerUnit:0,competitorPrice:0,fixedCosts:0,variableCostPct:0,pricePerUnit:0,cashOnHand:0,currentCash:0,avgMonthlyBurn:0,filingStatus:'single',stateRate:0,stateCode:'TX',bizType:'sole_prop',otherIncome:0,ytdTaxPaid:0,cfMonths:[]};
   IND=INDS.other; IND.key='other'; AT='overview'; PT=[];
   Object.values(Charts).forEach(function(ch){try{ch.destroy();}catch(e){}});Charts={};
   $('content').classList.remove('on');
