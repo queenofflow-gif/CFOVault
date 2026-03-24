@@ -842,16 +842,128 @@ function renderBenchmarks(){
 }
 
 function renderInsights(){
-  var a=getAdj(),n=S.revenue?a.bNet/S.revenue:0,lb=S.revenue?S.labor/S.revenue:0;
-  var ins=[],type='good';
-  if(a.bGMp>=IND.gm&&a.bNet>=0){ins.push('Gross margin at '+pc(a.bGMp)+' meets the '+IND.l+' benchmark of '+pc(IND.gm)+'. Net margin is positive at '+pc(n)+'.');}
-  else if(a.bGMp<IND.gm*.7){ins.push('Gross margin at '+pc(a.bGMp)+' is well below the '+pc(IND.gm)+' benchmark. This is your most urgent financial priority.');type='bad';}
-  else{ins.push('Gross margin at '+pc(a.bGMp)+' is approaching the '+pc(IND.gm)+' target. Use the scenario levers to model what gets you there.');type='warn';}
-  if(a.bNet<0){ins.push('Net loss of '+fmt(Math.abs(a.bNet))+' — the business is spending more than it earns. The Pricing and Break-Even tools will show the path to profitability.');type='bad';}
-  if(lb>IND.lb*1.3){ins.push(IND.tL+' at '+pc(lb)+' of revenue is above the '+pc(IND.lb)+' benchmark. Check the Labor & Staff tool for detail.');if(type==='good')type='warn';}
+  if(!S.revenue) return;
+  var a=getAdj();
+  var rev=S.revenue, cogs=S.cogs, labor=S.labor, opex=S.opex;
+  var tot=cogs+labor;
+  var gm=rev-tot, gmP=rev?gm/rev:0;
+  var net=gm-opex, netP=rev?net/rev:0;
+  var lbP=rev?labor/rev:0, cgP=rev?cogs/rev:0, opP=rev?opex/rev:0;
+  var moRev=rev/12, moBurn=(tot+opex)/12;
+
+  var insights=[]; // {title, body, type: 'good'|'warn'|'bad'|'info'}
+
+  // ── GROSS MARGIN ──────────────────────────────────────────────
+  if(gmP>=IND.gm){
+    insights.push({type:'good',title:'Gross margin on target ('+pc(gmP)+')',
+      body:'Your '+pc(gmP)+' gross margin meets the '+IND.l+' benchmark of '+pc(IND.gm)+'. To protect this: watch for cost creep in '+IND.tC.toLowerCase()+' as you grow, and reprice at every contract renewal or annual review.'});
+  } else if(gmP<IND.gm*.7){
+    var gap=Math.round((IND.gm-gmP)*rev);
+    insights.push({type:'bad',title:'Gross margin critical — '+pc(gmP)+' vs '+pc(IND.gm)+' benchmark',
+      body:'You need to close a $'+gap.toLocaleString()+'/yr gap to reach the industry benchmark. Every 1% improvement in gross margin adds '+fmt(rev*.01)+' to your bottom line. Use the Target Margin Calculator to see exactly what price increase or cost cut gets you there.'});
+  } else {
+    var needed=Math.round((IND.gm-gmP)*rev);
+    insights.push({type:'warn',title:'Gross margin improving but below target ('+pc(gmP)+')',
+      body:'You are '+pc(IND.gm-gmP)+' below the '+IND.l+' benchmark. Closing this gap requires '+fmt(needed)+'/yr in additional margin — achievable through a combination of pricing adjustments and '+IND.tC.toLowerCase()+' reduction. The scenario levers above model both paths.'});
+  }
+
+  // ── NET MARGIN / PROFITABILITY ────────────────────────────────
+  if(net<0){
+    var monthsToBreakEven=opex>0?Math.abs(net/(gm/12)):0;
+    insights.push({type:'bad',title:'Net loss of '+fmt(Math.abs(net))+' — not yet profitable',
+      body:'The business earns '+fmt(gm)+' in gross profit but spends '+fmt(opex)+' on overhead ('+pc(opP)+' of revenue). Overhead above '+pc(IND.op)+' is the benchmark ceiling. Either '+IND.tO.toLowerCase()+' needs to come down or revenue needs to increase by '+fmt(Math.abs(net))+' to break even.'});
+  } else if(netP<IND.net*.6){
+    insights.push({type:'warn',title:'Net margin below benchmark ('+pc(netP)+' vs '+pc(IND.net)+')',
+      body:'You are profitable but leaving '+fmt((IND.net-netP)*rev)+'/yr on the table vs benchmark. Healthy '+IND.l+' businesses run '+pc(IND.net)+' net margin. Review your '+IND.tO.toLowerCase()+' line by line — overhead tends to accumulate in subscriptions, contractors, and fixed costs that no longer serve growth.'});
+  } else {
+    insights.push({type:'good',title:'Profitable at '+pc(netP)+' net margin',
+      body:'Net income of '+fmt(net)+'/yr ('+pc(netP)+') is '+(netP>=IND.net?'at or above':'approaching')+' the '+pc(IND.net)+' benchmark. Protect this by reviewing overhead quarterly and tying any new fixed costs directly to revenue-generating activity.'});
+  }
+
+  // ── LABOR EFFICIENCY ─────────────────────────────────────────
+  if(lbP>IND.lb*1.4){
+    insights.push({type:'bad',title:IND.tL+' is elevated at '+pc(lbP)+' of revenue',
+      body:'The benchmark for '+IND.l+' is '+pc(IND.lb)+'. You are '+pc(lbP-IND.lb)+' over, costing '+fmt((lbP-IND.lb)*rev)+'/yr above benchmark. This usually means either staffing above current revenue levels, below-market pricing, or roles that could be consolidated. Use the Labor & Staff tool to see cost by person.'});
+  } else if(lbP>IND.lb*1.15){
+    insights.push({type:'warn',title:IND.tL+' slightly above benchmark ('+pc(lbP)+')',
+      body:'You are '+pc(lbP-IND.lb)+' over the '+pc(IND.lb)+' benchmark, adding '+fmt((lbP-IND.lb)*rev)+'/yr in excess labor cost. As revenue grows this ratio should improve naturally — but watch that new hires are tied to revenue milestones, not headcount targets.'});
+  } else if(labor>0){
+    insights.push({type:'good',title:IND.tL+' well-managed at '+pc(lbP)+' of revenue',
+      body:'Labor efficiency is on benchmark. At the current revenue level your team is appropriately sized. The risk to watch: as you grow, labor costs tend to step up in chunks (new hire, salary review) while revenue grows more gradually.'});
+  }
+
+  // ── COGS EFFICIENCY ───────────────────────────────────────────
+  if(cogs>0&&cgP>IND.gm*.7){
+    insights.push({type:'warn',title:IND.tC+' consuming '+pc(cgP)+' of revenue',
+      body:IND.tC+' at '+pc(cgP)+' of revenue is high relative to your margin target. Every $1 reduction in '+IND.tC.toLowerCase()+' flows directly to gross profit. Audit your top 3 '+IND.tC.toLowerCase()+' categories — in most businesses 80% of direct costs come from 20% of line items.'});
+  }
+
+  // ── OVERHEAD RATIO ────────────────────────────────────────────
+  if(opP>IND.op*1.3){
+    insights.push({type:'warn',title:IND.tO+' above benchmark ('+pc(opP)+' vs '+pc(IND.op)+')',
+      body:'Overhead at '+pc(opP)+' of revenue is '+pc(opP-IND.op)+' above benchmark, costing '+fmt((opP-IND.op)*rev)+'/yr. High overhead is a structural issue — it does not shrink automatically when revenue dips. Review all fixed commitments: leases, subscriptions, retainers, and recurring vendor contracts.'});
+  }
+
+  // ── CASH BURN / RUNWAY ────────────────────────────────────────
+  if(moBurn>0){
+    var cashPos=S.cashOnHand||Math.round(rev*.08);
+    var runway=net<0?cashPos/Math.abs(net/12):999;
+    if(net<0&&runway<6){
+      insights.push({type:'bad',title:'Cash runway of ~'+Math.round(runway)+' months — urgent',
+        body:'At the current burn rate of '+fmt(moBurn)+'/mo vs '+fmt(moRev)+'/mo revenue, cash reserves cover approximately '+Math.round(runway)+' months. This requires immediate action: accelerate collections, defer non-essential expenses, and explore bridge financing or revenue acceleration.'});
+    } else if(net>0){
+      insights.push({type:'info',title:'Monthly cash generation: '+fmt(net/12),
+        body:'The business generates '+fmt(net/12)+'/mo in net income. Use this to build a cash reserve of at least 3–6 months of operating expenses (target: '+fmt(moBurn*3)+'–'+fmt(moBurn*6)+') before deploying into growth. Check the Runway tool for scenario modeling.'});
+    }
+  }
+
+  // ── REVENUE CONCENTRATION / SCALE ────────────────────────────
+  if(rev<200000){
+    insights.push({type:'info',title:'Revenue scale: '+fmt(rev)+'/yr ('+fmt(moRev)+'/mo)',
+      body:'At this revenue level, every percentage point of margin improvement has an outsized impact. Focus on pricing discipline before adding overhead — a 5% price increase on '+fmt(rev)+' adds '+fmt(rev*.05)+'/yr with zero additional cost.'});
+  } else if(rev>1000000){
+    insights.push({type:'info',title:'Revenue at scale: '+fmt(rev)+'/yr',
+      body:'At this revenue level, operational efficiency becomes the primary lever. A 1% improvement in gross margin is worth '+fmt(rev*.01)+'/yr. Standardize your pricing, automate collections, and review vendor contracts annually — small % improvements compound significantly at this scale.'});
+  }
+
+  // ── INDUSTRY-SPECIFIC INSIGHT ─────────────────────────────────
+  var indInsight={
+    restaurant:cogs>0?{type:'info',title:'Food cost ratio: '+pc(cgP),body:'Food cost ('+pc(cgP)+') '+(cgP<.32?'is within the 28-32% target — strong menu pricing discipline.':'is above the 28-32% target. Review your menu mix, portion sizes, and supplier contracts. A 2% reduction in food cost on '+fmt(rev)+' revenue is worth '+fmt(rev*.02)+'/yr.')}: null,
+    healthcare:labor>0?{type:'info',title:'Clinical labor as % of revenue: '+pc(lbP),body:'Healthcare labor at '+pc(lbP)+' of revenue. '+(lbP<.45?'Within range for a physician-heavy practice.':'Consider payer mix optimization and revenue cycle management — collections rate and days-in-AR directly impact how much of your earned revenue you actually receive.')}: null,
+    saas:opex>0?{type:'info',title:'Sales & marketing efficiency',body:'In SaaS, gross margin ('+pc(gmP)+') should fund growth. If CAC payback is over 18 months, marketing spend may be outpacing returns. Track revenue per customer and churn rate monthly — both have more impact on valuation than top-line growth alone.'}: null,
+    agency:labor>0?{type:'info',title:'Utilization & billing efficiency',body:'Agency profitability is driven by utilization rate (billable hours / total hours, target 70-80%) and effective billing rate. If gross margin is below '+pc(IND.gm)+', the most common cause is underpricing, scope creep, or below-target utilization on senior staff.'}: null,
+    msp:cogs>0?{type:'info',title:'MSP cost efficiency: '+pc(cgP)+' of revenue',body:'MSP/contractor cost at '+pc(cgP)+' of revenue. '+(cgP<.12?'Below the 12% benchmark — well controlled.':'Above the 12% benchmark. Your top contractor by spend is your primary lever. Review scope, hours, and rates against deliverables quarterly.')}: null,
+    law:labor>0?{type:'info',title:'Overhead ratio: '+pc(opP),body:'Law firm overhead at '+pc(opP)+' of revenue. Benchmark is under '+pc(IND.op)+'. Revenue per attorney and realization rate (billed/worked hours) are the two most impactful CFO metrics — a 5% improvement in realization rate on '+fmt(labor)+' in attorney cost is worth '+fmt(labor*.05)+'/yr.'}: null,
+    construction:net<0||cgP>.8?{type:'warn',title:'Job cost ratio: '+pc(cgP),body:'Materials and subcontractor cost at '+pc(cgP)+' of revenue. In construction, gross margin below 15% leaves no buffer for rework, delays, or change order disputes. Review your bid process and markup rates — underpricing is the most common cause of thin margins in construction.'}: null,
+  };
+  var ii=indInsight[S.industry];
+  if(ii) insights.push(ii);
+
+  // ── RENDER ────────────────────────────────────────────────────
+  var overallType=insights.some(function(i){return i.type==='bad';})?'bad':insights.some(function(i){return i.type==='warn';})?'warn':'good';
   var box=$('insightBox');
-  box.className='ibox '+type;
-  box.innerHTML='<div style="font-family:var(--serif);font-size:15px;color:var(--acc);margin-bottom:.6rem;font-weight:600">Analysis — '+(S.bizName||IND.l)+'</div>'+ins.map(function(t){return'<div class="irow"><div class="idot"></div><span>'+t+'</span></div>';}).join('');
+  box.className='ibox '+overallType;
+
+  // Group by type for visual hierarchy
+  var bads=insights.filter(function(i){return i.type==='bad';});
+  var warns=insights.filter(function(i){return i.type==='warn';});
+  var goods=insights.filter(function(i){return i.type==='good';});
+  var infos=insights.filter(function(i){return i.type==='info';});
+  var ordered=bads.concat(warns).concat(goods).concat(infos);
+
+  box.innerHTML=
+    '<div style="font-family:var(--serif);font-size:15px;color:var(--acc);margin-bottom:1rem;font-weight:600">CFO Insights — '+(S.bizName||IND.l)+'</div>'+
+    ordered.map(function(ins){
+      var iconMap={good:'✓',warn:'⚡',bad:'⚠',info:'→'};
+      var colorMap={good:'var(--acc)',warn:'var(--amb)',bad:'var(--red)',info:'var(--blu)'};
+      var bgMap={good:'var(--accL)',warn:'var(--ambL)',bad:'var(--redL)',info:'var(--bluL)'};
+      var bdrMap={good:'#aecfbd',warn:'#e8d098',bad:'#e8b0b0',info:'#a8c0e0'};
+      return'<div style="background:'+bgMap[ins.type]+';border:1px solid '+bdrMap[ins.type]+';border-radius:9px;padding:.85rem 1rem;margin-bottom:.65rem;display:flex;gap:10px;align-items:flex-start">'+
+        '<div style="width:20px;height:20px;border-radius:50%;background:'+colorMap[ins.type]+';color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">'+iconMap[ins.type]+'</div>'+
+        '<div><div style="font-size:13px;font-weight:600;color:'+colorMap[ins.type]+';margin-bottom:3px">'+ins.title+'</div>'+
+        '<div style="font-size:12px;color:var(--mut);line-height:1.6">'+ins.body+'</div></div>'+
+      '</div>';
+    }).join('');
 }
 
 // ── OVERVIEW TOOL ─────────────────────────────────────────────────
@@ -1357,6 +1469,13 @@ function resetApp(){
   $('parseStatus').style.display='none';
   ['btnSave','btnExport','btnImport','btnPDF','btnReset'].forEach(function(id){$(id).style.display='none';});
   document.querySelectorAll('.ind-chip').forEach(function(c){c.classList.remove('sel');});
+  // Clear AI output and insights so previous file data doesn't persist
+  var aiOut=$('aiOut'),aiLoad=$('aiLoad'),aiBtn=$('aiBtn');
+  if(aiOut){aiOut.innerHTML='';aiOut.classList.remove('show');}
+  if(aiLoad){aiLoad.classList.remove('show');}
+  if(aiBtn){aiBtn.disabled=false;}
+  var insBox=$('insightBox');
+  if(insBox){insBox.innerHTML='';insBox.className='ibox good';}
   window.scrollTo({top:0,behavior:'smooth'});
 }
 </script>
