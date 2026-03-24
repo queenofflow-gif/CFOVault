@@ -710,7 +710,16 @@ function stateOptions(sel){
 }
 
 // ── PERIOD SELECTOR ───────────────────────────────────────────────
-var periodData = {revenue:0,cogs:0,labor:0,opex:0}; // holds period-filtered values
+var periodData = {revenue:0,cogs:0,labor:0,opex:0};
+var periodMode = 'total'; // 'total' or 'compare' // holds period-filtered values
+
+function setPeriodMode(mode){
+  periodMode=mode===0?'total':'compare';
+  var mb=$('modeTotal'),mc2=$('modeCompare');
+  if(mb){mb.style.background=mode===0?'var(--acc)':'var(--surf2)';mb.style.borderColor=mode===0?'var(--acc)':'var(--bdrS)';mb.style.color=mode===0?'#fff':'var(--mut)';}
+  if(mc2){mc2.style.background=mode===1?'var(--acc)':'var(--surf2)';mc2.style.borderColor=mode===1?'var(--acc)':'var(--bdrS)';mc2.style.color=mode===1?'#fff':'var(--mut)';}
+  renderOvData();
+}
 
 function switchPeriodRange(){
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1026,6 +1035,66 @@ function renderInsights(){
     }).join('');
 }
 
+
+// ── MONTH COMPARISON TABLE ────────────────────────────────────────
+function renderCompareTable(moIdxs, MO, rows){
+  var months=moIdxs.map(function(i){return S.cfMonths[i];});
+  var MO_NAMES=MO;
+
+  // For each row, get values for each month
+  // Revenue and expenses come from cfMonths; split expenses by proportion
+  var totRev=S.revenue, totCogs=S.cogs, totLab=S.labor, totOpex=S.opex;
+  var totTot=totCogs+totLab;
+
+  function getMonthVal(label, moData){
+    var moRev=moData.revenue||0;
+    var moExp=moData.expenses||0;
+    // Estimate splits from annual proportions
+    var cogsR=totRev?totCogs/totRev:0;
+    var labR=totRev?totLab/totRev:0;
+    var opexR=totRev?totOpex/totRev:0;
+    var moCogs=Math.round(moRev*cogsR);
+    var moLab=Math.round(moRev*labR);
+    var moOpex=Math.round(moRev*opexR);
+    var moTot=moCogs+moLab;
+    var moGM=moRev-moTot;
+    var moNet=moGM-moOpex;
+    var map={};
+    map[IND.tR]=moRev; map[IND.tC]=moCogs; map[IND.tL]=moLab;
+    map['Total COGS']=moTot; map['Gross margin']=moGM;
+    map[IND.tO]=moOpex; map['Net margin']=moNet;
+    return map[label]!==undefined?map[label]:0;
+  }
+
+  // Build header
+  var t='<thead><tr><th>Line item</th>';
+  moIdxs.forEach(function(i){ t+='<th class="tr" style="color:var(--acc)">'+MO_NAMES[i]+'</th>'; });
+  // Add trend column if 2 months
+  if(moIdxs.length===2) t+='<th class="tr" style="color:var(--sub)">Trend</th>';
+  else t+='<th class="tr" style="color:var(--sub)">vs Prior Mo</th>';
+  t+='</tr></thead><tbody>';
+
+  rows.forEach(function(r){
+    var cls=r.tot?'ttot':'';
+    var isM=r.l==='Gross margin'||r.l==='Net margin';
+    var vals=moIdxs.map(function(i){return getMonthVal(r.l,S.cfMonths[i]);});
+    t+='<tr class="'+cls+'"><td class="tmu">'+r.l+'</td>';
+    vals.forEach(function(v,i){
+      t+='<td class="tr tm '+(isM?(v<0?'vr':'vg'):'')+'">'+(v<0?'-':'')+fmt(v)+'</td>';
+    });
+    // Trend: compare last month to first month
+    var first=vals[0], last=vals[vals.length-1];
+    var diff=last-first;
+    var good=r.lib?diff<0:diff>0;
+    var arrow=diff===0?'—':diff>0?'<span style="color:'+(good?'var(--acc)':'var(--red)')+'">▲ '+fmt(Math.abs(diff))+'</span>':'<span style="color:'+(good?'var(--acc)':'var(--red)')+'">▼ '+fmt(Math.abs(diff))+'</span>';
+    var pctChg=first!==0?((diff/Math.abs(first))*100).toFixed(1)+'%':'';
+    t+='<td class="tr" style="font-size:12px">'+arrow+(pctChg&&diff!==0?' <span style="font-size:10px;color:var(--sub)">('+pctChg+')</span>':'')+'</td>';
+    t+='</tr>';
+  });
+
+  if($('plTable')) $('plTable').innerHTML=t+'</tbody>';
+}
+
 // ── OVERVIEW TOOL ─────────────────────────────────────────────────
 function renderOverview(){
   var el=$('tp-overview'); if(!el) return;
@@ -1033,11 +1102,12 @@ function renderOverview(){
   el.innerHTML=
     '<div class="sec">Period selector</div>'+
     '<div class="panel" style="margin-bottom:1.5rem">'+
-      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
-        '<div style="font-size:12px;color:var(--mut);font-weight:500;white-space:nowrap">Period range:</div>'+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:.75rem">'+
+        '<div style="font-size:12px;color:var(--mut);font-weight:500;white-space:nowrap">From:</div>'+
         '<select id="periodFrom" onchange="switchPeriodRange()" style="border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer">'+
           '<option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>'+
         '</select>'+
+        '<div style="font-size:12px;color:var(--mut);font-weight:500;white-space:nowrap">To:</div>'+
         '<select id="periodTo" onchange="switchPeriodRange()" style="border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer">'+
           '<option value="-1">— (single month)</option>'+
           '<option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11" selected>Dec</option>'+
@@ -1045,6 +1115,11 @@ function renderOverview(){
         '<button onclick="resetPeriod()" style="background:var(--surf2);border:1px solid var(--bdrS);color:var(--mut);border-radius:7px;padding:5px 11px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:500">Full year</button>'+
         '<span id="periodBadge" style="font-size:11px;background:var(--accL);color:var(--acc);padding:2px 8px;border-radius:12px;font-weight:500;display:none">Partial period</span>'+
         '<span id="periodLabel" style="font-size:12px;color:var(--sub)"></span>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<div style="font-size:11px;color:var(--sub);font-weight:500;text-transform:uppercase;letter-spacing:.07em">View as:</div>'+
+        '<button id="modeTotal" onclick="setPeriodMode(0)" style="background:var(--acc);border:1px solid var(--acc);color:#fff;border-radius:7px;padding:4px 12px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:500">Combined total</button>'+
+        '<button id="modeCompare" onclick="setPeriodMode(1)" style="background:var(--surf2);border:1px solid var(--bdrS);color:var(--mut);border-radius:7px;padding:4px 12px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:500">Month comparison ▲▼</button>'+
       '</div>'+
     '</div>'+
     '<div class="tcol" style="margin-bottom:1.5rem">'+
@@ -1090,57 +1165,77 @@ function renderOverview(){
 
 function renderOvData(){
   var a=getAdj();
-  // Determine period label for column header
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var from=parseInt($('periodFrom')&&$('periodFrom').value||0);
-  var to=parseInt($('periodTo')&&$('periodTo').value||11);
-  var isFullYear=(from===0&&to===11)||(!$('periodFrom'));
-  var periodLabel=isFullYear?'Year (full)':MO[from]+(from===to?'':' – '+MO[to]);
-  // P&L table
+  var fromV=parseInt($('periodFrom')&&$('periodFrom').value||0);
+  var toV=parseInt($('periodTo')&&$('periodTo').value||11);
+  var toActual=toV===-1?fromV:toV;
+  if(toActual<fromV) toActual=fromV;
+  var isFullYear=(fromV===0&&toActual===11)||(!$('periodFrom'));
+  var isSingleMo=(toV===-1||fromV===toActual);
+  var periodLabel;
+  if(S.rawRevenue&&S.rawRevenue>0&&isFullYear) periodLabel=S.periodMonths+'-month actual';
+  else if(isFullYear) periodLabel='Year (full)';
+  else if(isSingleMo) periodLabel=MO[fromV]+' only';
+  else periodLabel=MO[fromV]+' – '+MO[toActual];
+  var from=fromV, to=toActual;
+
   // Build raw value map for partial-year files
   var rawTotC=(S.rawCogs||0)+(S.rawLabor||0);
   var rawGMC=(S.rawRevenue||0)-rawTotC;
   var rawMap={};
-  rawMap[IND.tR]=S.rawRevenue||0;
-  rawMap[IND.tC]=S.rawCogs||0;
-  rawMap[IND.tL]=S.rawLabor||0;
-  rawMap['Total COGS']=rawTotC;
-  rawMap['Gross margin']=rawGMC;
-  rawMap[IND.tO]=S.rawOpex||0;
-  rawMap['Net margin']=rawGMC-(S.rawOpex||0);
+  rawMap[IND.tR]=S.rawRevenue||0; rawMap[IND.tC]=S.rawCogs||0; rawMap[IND.tL]=S.rawLabor||0;
+  rawMap['Total COGS']=rawTotC; rawMap['Gross margin']=rawGMC;
+  rawMap[IND.tO]=S.rawOpex||0; rawMap['Net margin']=rawGMC-(S.rawOpex||0);
+
   var rows=[
-    {l:IND.tR,      b:S.revenue, adj:a.aR,   lib:false},
-    {l:IND.tC,      b:S.cogs,    adj:a.aC,   lib:true},
-    {l:IND.tL,      b:S.labor,   adj:a.aL,   lib:true},
-    {l:'Total COGS',b:a.bT,      adj:a.aT,   lib:true, tot:true},
-    {l:'Gross margin',b:a.bGM,   adj:a.aGM,  lib:false, tot:true, pcts:[a.bGMp,a.aGMp]},
-    {l:IND.tO,      b:S.opex,    adj:a.aO,   lib:true},
-    {l:'Net margin', b:a.bNet,   adj:a.aNet, lib:false, tot:true}
+    {l:IND.tR,        b:S.revenue, adj:a.aR,  lib:false},
+    {l:IND.tC,        b:S.cogs,    adj:a.aC,  lib:true},
+    {l:IND.tL,        b:S.labor,   adj:a.aL,  lib:true},
+    {l:'Total COGS',  b:a.bT,      adj:a.aT,  lib:true,  tot:true},
+    {l:'Gross margin',b:a.bGM,     adj:a.aGM, lib:false, tot:true, pcts:[a.bGMp,a.aGMp]},
+    {l:IND.tO,        b:S.opex,    adj:a.aO,  lib:true},
+    {l:'Net margin',  b:a.bNet,    adj:a.aNet,lib:false, tot:true}
   ];
-  var t='<thead><tr><th>Line item</th>'+
-      '<th class="tr" style="color:var(--blu)">'+(S.periodMonths&&S.periodMonths<12?'Annualized ('+S.periodMonths+' mo)':'Year (annual)')+'</th>'+
-      '<th class="tr" style="color:var(--acc)">'+periodLabel+'</th>'+
-      '<th class="tr">Change</th></tr></thead><tbody>';
+
+  // ── COMPARE MODE: show each month as its own column ────────────
+  if(periodMode==='compare'&&!isFullYear&&!isSingleMo&&S.cfMonths&&S.cfMonths.length>0){
+    var moIdxs=[];
+    for(var i=from;i<=to;i++) moIdxs.push(i);
+    // Only compare if we have monthly data
+    var hasMoData=moIdxs.every(function(i){return S.cfMonths[i]&&S.cfMonths[i].revenue>0;});
+    if(hasMoData&&moIdxs.length>=2){
+      renderCompareTable(moIdxs, MO, rows);
+      calcReverse();
+      return;
+    }
+  }
+
+  // ── STANDARD MODE ─────────────────────────────────────────────
+  var t='<thead><tr>'+
+    '<th>Line item</th>'+
+    '<th class="tr" style="color:var(--blu)">'+(S.periodMonths&&S.periodMonths<12?'Annualized ('+S.periodMonths+' mo)':'Year (annual)')+'</th>'+
+    '<th class="tr" style="color:var(--acc)">'+(S.rawRevenue&&S.rawRevenue>0&&isFullYear?S.periodMonths+'-month actual':periodLabel)+'</th>'+
+    '<th class="tr">Change</th>'+
+  '</tr></thead><tbody>';
+
   rows.forEach(function(r){
     var d=r.adj-r.b, good=r.lib?d<0:d>0;
     var dc=d===0?'':(good?'vg':'vr');
     var cls=r.tot?'ttot':'';
     var isM=r.l==='Gross margin'||r.l==='Net margin';
     var ps=r.pcts?' <span style="font-size:10px;color:var(--sub)">('+pc(r.pcts[0])+' → '+pc(r.pcts[1])+')</span>':'';
-    // Year column always shows full annual; Period column shows selected range
-    var yearVal=isFullYear?r.b:({
-      revenue:S.revenue, cogs:S.cogs, labor:S.labor,
-      'Total COGS':S.cogs+S.labor, 'Gross margin':S.revenue-(S.cogs+S.labor),
-      [IND.tO]:S.opex, 'Net margin':S.revenue-(S.cogs+S.labor)-S.opex
-    }[r.l]||r.b);
-    var dispAdj=S.rawRevenue&&S.rawRevenue>0&&isFullYear?(rawMap&&rawMap[r.l]!==undefined?rawMap[r.l]:r.adj):r.adj;
-    var d2=dispAdj-yearVal,g2=r.lib?d2<0:d2>0,dc2=d2===0?'':(g2?'vg':'vr');
+    var useRaw=S.rawRevenue&&S.rawRevenue>0&&isFullYear;
+    var dispAdj=useRaw?(rawMap[r.l]!==undefined?rawMap[r.l]:r.adj):r.adj;
+    var yearVal=r.b;
+    var d2=dispAdj-yearVal, g2=r.lib?d2<0:d2>0, dc2=d2===0?'':(g2?'vg':'vr');
     t+='<tr class="'+cls+'"><td class="tmu">'+r.l+ps+'</td>'+
       '<td class="tr tm" style="color:var(--blu)">'+(yearVal<0?'-':'')+fmt(yearVal)+'</td>'+
       '<td class="tr tm '+(isM?(dispAdj<0?'vr':'vg'):'')+'">'+(dispAdj<0?'-':'')+fmt(dispAdj)+'</td>'+
       '<td class="tr tm '+dc2+'">'+(d2===0?'—':(d2>0?'+':'-')+fmt(Math.abs(d2)))+'</td></tr>';
   });
   if($('plTable')) $('plTable').innerHTML=t+'</tbody>';
+  calcReverse();
+
   // Chart
   var ctx=$('ovChart'); if(!ctx) return;
   if(Charts.ov){Charts.ov.destroy();}
