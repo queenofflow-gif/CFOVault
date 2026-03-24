@@ -662,28 +662,40 @@ function stateOptions(sel){
 // ── PERIOD SELECTOR ───────────────────────────────────────────────
 var periodData = {revenue:0,cogs:0,labor:0,opex:0}; // holds period-filtered values
 
-function switchPeriod(val){
+function switchPeriodRange(){
   var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  var moMap={q1:[0,1,2],q2:[3,4,5],q3:[6,7,8],q4:[9,10,11]};
+  var from=parseInt($('periodFrom')&&$('periodFrom').value||0);
+  var to=parseInt($('periodTo')&&$('periodTo').value||11);
+  // Ensure from <= to
+  if(from>to){ to=from; if($('periodTo')) $('periodTo').value=from; }
+  var idxs=[];
+  for(var i=from;i<=to;i++) idxs.push(i);
+  var isFullYear=(from===0&&to===11);
   var badge=$('periodBadge'), lbl=$('periodLabel');
-
-  if(val==='annual'){
+  if(isFullYear){
     periodData={revenue:S.revenue,cogs:S.cogs,labor:S.labor,opex:S.opex};
-    if(badge)badge.style.display='none';
-    if(lbl)lbl.textContent='';
-  } else if(moMap[val]){
-    var idxs=moMap[val];
-    periodData=calcPeriodData(idxs);
-    if(badge)badge.style.display='block';
-    if(lbl)lbl.textContent=MO[idxs[0]]+' – '+MO[idxs[idxs.length-1]];
+    if(badge) badge.style.display='none';
+    if(lbl) lbl.textContent='Full year';
   } else {
-    var moIdx=parseInt(val.replace('mo',''))-1;
-    periodData=calcPeriodData([moIdx]);
-    if(badge)badge.style.display='block';
-    if(lbl)lbl.textContent=MO[moIdx]+' only';
+    periodData=calcPeriodData(idxs);
+    if(badge) badge.style.display='block';
+    if(lbl) lbl.textContent=MO[from]+(from===to?'':' – '+MO[to])+' ('+idxs.length+' month'+(idxs.length>1?'s':'')+')';
   }
   renderOvData();
 }
+
+function resetPeriod(){
+  if($('periodFrom')) $('periodFrom').value=0;
+  if($('periodTo')) $('periodTo').value=11;
+  periodData={revenue:S.revenue,cogs:S.cogs,labor:S.labor,opex:S.opex};
+  var badge=$('periodBadge'), lbl=$('periodLabel');
+  if(badge) badge.style.display='none';
+  if(lbl) lbl.textContent='Full year';
+  renderOvData();
+}
+
+// Keep old switchPeriod as no-op for safety
+function switchPeriod(val){ switchPeriodRange(); }
 
 function calcPeriodData(idxs){
   // If we have monthly data use it, otherwise prorate annual
@@ -849,18 +861,18 @@ function renderOverview(){
   el.innerHTML=
     '<div class="sec">Period selector</div>'+
     '<div class="panel" style="margin-bottom:1.5rem">'+
-      '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">'+
-        '<div style="font-size:12px;color:var(--mut);font-weight:500">View period:</div>'+
-        '<select id="periodSel" onchange="switchPeriod(this.value)" style="border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer;min-width:200px">'+
-          '<option value="annual">Full year (annual)</option>'+
-          '<option value="q1">Q1 (Jan–Mar)</option>'+
-          '<option value="q2">Q2 (Apr–Jun)</option>'+
-          '<option value="q3">Q3 (Jul–Sep)</option>'+
-          '<option value="q4">Q4 (Oct–Dec)</option>'+
-          ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].map(function(m,i){return'<option value="mo'+(i+1)+'">'+m+'</option>';}).join('')+
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<div style="font-size:12px;color:var(--mut);font-weight:500;white-space:nowrap">Period range:</div>'+
+        '<select id="periodFrom" onchange="switchPeriodRange()" style="border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer">'+
+          '<option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>'+
         '</select>'+
-        '<span id="periodLabel" style="font-size:12px;color:var(--sub)"></span>'+
+        '<span style="font-size:12px;color:var(--sub)">to</span>'+
+        '<select id="periodTo" onchange="switchPeriodRange()" style="border:1px solid var(--bdr);border-radius:7px;padding:6px 10px;font-family:var(--sans);font-size:13px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer">'+
+          '<option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option><option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option><option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option><option value="9">Oct</option><option value="10">Nov</option><option value="11" selected>Dec</option>'+
+        '</select>'+
+        '<button onclick="resetPeriod()" style="background:var(--surf2);border:1px solid var(--bdrS);color:var(--mut);border-radius:7px;padding:5px 11px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:500">Full year</button>'+
         '<span id="periodBadge" style="font-size:11px;background:var(--accL);color:var(--acc);padding:2px 8px;border-radius:12px;font-weight:500;display:none">Partial period</span>'+
+        '<span id="periodLabel" style="font-size:12px;color:var(--sub)"></span>'+
       '</div>'+
     '</div>'+
     '<div class="tcol" style="margin-bottom:1.5rem">'+
@@ -906,6 +918,12 @@ function renderOverview(){
 
 function renderOvData(){
   var a=getAdj();
+  // Determine period label for column header
+  var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var from=parseInt($('periodFrom')&&$('periodFrom').value||0);
+  var to=parseInt($('periodTo')&&$('periodTo').value||11);
+  var isFullYear=(from===0&&to===11)||(!$('periodFrom'));
+  var periodLabel=isFullYear?'Year (full)':MO[from]+(from===to?'':' – '+MO[to]);
   // P&L table
   var rows=[
     {l:IND.tR,      b:S.revenue, adj:a.aR,   lib:false},
@@ -916,14 +934,26 @@ function renderOvData(){
     {l:IND.tO,      b:S.opex,    adj:a.aO,   lib:true},
     {l:'Net margin', b:a.bNet,   adj:a.aNet, lib:false, tot:true}
   ];
-  var t='<thead><tr><th>Line item</th><th class="tr">Current</th><th class="tr">Adjusted</th><th class="tr">Change</th></tr></thead><tbody>';
+  var t='<thead><tr><th>Line item</th>'+
+      '<th class="tr" style="color:var(--blu)">Year (annual)</th>'+
+      '<th class="tr" style="color:var(--acc)">'+periodLabel+'</th>'+
+      '<th class="tr">Change</th></tr></thead><tbody>';
   rows.forEach(function(r){
     var d=r.adj-r.b, good=r.lib?d<0:d>0;
     var dc=d===0?'':(good?'vg':'vr');
     var cls=r.tot?'ttot':'';
     var isM=r.l==='Gross margin'||r.l==='Net margin';
     var ps=r.pcts?' <span style="font-size:10px;color:var(--sub)">('+pc(r.pcts[0])+' → '+pc(r.pcts[1])+')</span>':'';
-    t+='<tr class="'+cls+'"><td class="tmu">'+r.l+ps+'</td><td class="tr tm '+(isM?(r.b<0?'vr':'vg'):'')+'">'+(r.b<0?'-':'')+fmt(r.b)+'</td><td class="tr tm '+(isM?(r.adj<0?'vr':'vg'):'')+'">'+(r.adj<0?'-':'')+fmt(r.adj)+'</td><td class="tr tm '+dc+'">'+(d===0?'—':(d>0?'+':'-')+fmt(Math.abs(d)))+'</td></tr>';
+    // Year column always shows full annual; Period column shows selected range
+    var yearVal=isFullYear?r.b:({
+      revenue:S.revenue, cogs:S.cogs, labor:S.labor,
+      'Total COGS':S.cogs+S.labor, 'Gross margin':S.revenue-(S.cogs+S.labor),
+      [IND.tO]:S.opex, 'Net margin':S.revenue-(S.cogs+S.labor)-S.opex
+    }[r.l]||r.b);
+    t+='<tr class="'+cls+'"><td class="tmu">'+r.l+ps+'</td>'+
+      '<td class="tr tm" style="color:var(--blu)">'+(yearVal<0?'-':'')+fmt(yearVal)+'</td>'+
+      '<td class="tr tm '+(isM?(r.adj<0?'vr':'vg'):'')+'">'+(r.adj<0?'-':'')+fmt(r.adj)+'</td>'+
+      '<td class="tr tm '+dc+'">'+(d===0?'—':(d>0?'+':'-')+fmt(Math.abs(d)))+'</td></tr>';
   });
   if($('plTable')) $('plTable').innerHTML=t+'</tbody>';
   // Chart
