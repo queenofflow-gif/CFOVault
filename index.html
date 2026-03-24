@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CFO Vault — CFO In Your Pocket</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f3f0;--surf:#fff;--surf2:#edeae6;
+  --bdr:#ddd9d4;--bdrS:#c4beb8;
+  --txt:#1c1a18;--mut:#5c5954;--sub:#8f8b87;
+  --acc:#2a5c45;--accL:#e6f0eb;--accM:#3a7a5c;
+  --red:#9e2b2b;--redL:#fdf1f1;
+  --amb:#7a4f00;--ambL:#fdf5e6;
+  --grn:#1a5e38;--grnL:#e8f5ee;
+  --blu:#1a3a70;--bluL:#edf2fc;
+  --sans:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+  --serif:'Playfair Display',Georgia,serif;
+}
+body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh}
+header{background:var(--surf);border-bottom:1px solid var(--bdr);padding:1.1rem 2.5rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.lmark{font-family:var(--serif);font-size:20px;color:var(--acc);font-weight:600}
+.ltag{font-size:11px;color:var(--sub);letter-spacing:.1em;text-transform:uppercase;margin-right:auto}
+.hbtn{background:var(--surf);border:1px solid var(--bdrS);color:var(--mut);font-size:12px;padding:5px 13px;border-radius:7px;cursor:pointer;font-family:var(--sans);font-weight:500;transition:all .15s;display:none;white-space:nowrap}
+.hbtn:hover{border-color:var(--acc);color:var(--acc);background:var(--accL)}
+.hbtn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.hbtn.pri:hover{background:var(--accM)}
+main{max-width:1340px;margin:0 auto;padding:2rem 2.5rem}
+/* ONBOARDING */
+.ob-hero{background:var(--acc);border-radius:20px 20px 0 0;padding:2.5rem 3rem;position:relative;overflow:hidden}
+.ob-hero::before{content:"";position:absolute;right:-60px;top:-60px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none}
+.ob-headline{font-family:var(--serif);font-size:34px;color:#fff;font-weight:600;line-height:1.2;margin-bottom:.65rem}
+.ob-headline em{color:#86efac;font-style:italic}
+.ob-sub{color:rgba(255,255,255,.72);font-size:14px;max-width:560px;line-height:1.65}
+.ob-industry{background:var(--surf);border:1px solid var(--bdr);border-top:none;border-radius:0 0 20px 20px;padding:1.5rem 2rem;margin-bottom:2rem}
+.ob-ind-label{font-size:11px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.85rem}
+.ind-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+.ind-chip{background:var(--surf2);border:1.5px solid var(--bdr);border-radius:10px;padding:.6rem .9rem;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--mut)}
+.ind-chip:hover{border-color:var(--acc);color:var(--acc);background:var(--accL)}
+.ind-chip.sel{border-color:var(--acc);background:var(--accL);color:var(--acc);font-weight:600}
+.ind-chip .ii{font-size:18px;flex-shrink:0}
+.ob-actions{display:flex;gap:10px;margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--bdr);align-items:center;flex-wrap:wrap}
+.ob-btn{background:var(--surf2);border:1px solid var(--bdrS);color:var(--txt);padding:9px 18px;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:500;transition:all .15s}
+.ob-btn:hover{border-color:var(--acc);color:var(--acc);background:var(--accL)}
+.ob-btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.ob-btn.pri:hover{background:var(--accM)}
+.ob-notice{font-size:12px;color:var(--sub);margin-left:auto}
+/* STATUS */
+#parseStatus{display:none;padding:.8rem 1.1rem;border-radius:8px;font-size:13px;margin-bottom:1.5rem;border:1px solid}
+#parseStatus.ok{background:var(--accL);border-color:#b0cfc0;color:var(--acc)}
+#parseStatus.err{background:var(--redL);border-color:#e8b0b0;color:var(--red)}
+#parseStatus.warn{background:var(--ambL);border-color:#e8d098;color:var(--amb)}
+/* LAYOUT */
+.sec{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);margin-bottom:.85rem;display:flex;align-items:center;gap:8px;font-weight:500}
+.sec::after{content:"";flex:1;height:1px;background:var(--bdr)}
+.mrow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.75rem}
+.mrow4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+.mrow3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem}
+.mrow2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:1.5rem}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:1.75rem}
+.tcol{display:grid;grid-template-columns:340px 1fr;gap:18px;margin-bottom:1.75rem}
+.fullw{margin-bottom:1.75rem}
+/* CARDS */
+.mc{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:1rem 1.1rem;position:relative;overflow:hidden}
+.mc::after{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+.mc.cg{border-color:#aecfbd}.mc.cg::after{background:var(--acc)}
+.mc.cr{border-color:#e8b0b0}.mc.cr::after{background:var(--red)}
+.mc.cw{border-color:#e8d098}.mc.cw::after{background:var(--amb)}
+.mc.cb{border-color:#a8c0e0}.mc.cb::after{background:var(--blu)}
+.ml{font-size:10px;color:var(--sub);letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px;font-weight:500}
+.mv{font-family:var(--mono);font-size:21px;font-weight:500;line-height:1.1}
+.mv.vg{color:var(--acc)}.mv.vr{color:var(--red)}.mv.va{color:var(--amb)}.mv.vb{color:var(--blu)}
+.ms{font-size:11px;color:var(--sub);margin-top:3px}
+/* SCORE */
+.score-ring{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:27px;font-weight:600;border:3px solid;flex-shrink:0}
+.sA{border-color:var(--acc);color:var(--acc);background:var(--accL)}
+.sB{border-color:var(--blu);color:var(--blu);background:var(--bluL)}
+.sC{border-color:var(--amb);color:var(--amb);background:var(--ambL)}
+.sD{border-color:var(--red);color:var(--red);background:var(--redL)}
+/* PANELS */
+.panel{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:1.4rem}
+.ptitle{font-family:var(--serif);font-size:16px;margin-bottom:.15rem;font-weight:500}
+.psub{font-size:12px;color:var(--mut);margin-bottom:1rem;line-height:1.5}
+/* SLIDERS */
+.sg{margin-bottom:1rem}
+.sh{display:flex;justify-content:space-between;margin-bottom:4px}
+.sl{font-size:12px;color:var(--mut)}
+.sv{font-family:var(--mono);font-size:12px;color:var(--acc);font-weight:500;background:var(--accL);padding:1px 6px;border-radius:4px}
+input[type=range]{width:100%;-webkit-appearance:none;height:4px;background:var(--bdr);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--acc);cursor:pointer;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+/* TABLES */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--sub);padding:5px 8px;border-bottom:1px solid var(--bdr);text-align:left;font-weight:500}
+td{padding:6px 8px;border-bottom:1px solid var(--bdr);color:var(--txt)}
+tr:last-child td{border-bottom:none}
+.tm{font-family:var(--mono);font-size:12px}.tr{text-align:right}.tmu{color:var(--mut);font-size:12px}
+.ttot td{border-top:1.5px solid var(--bdrS);font-weight:500;border-bottom:none}
+.vg{color:var(--acc)}.vr{color:var(--red)}.va{color:var(--amb)}.vb{color:var(--blu)}
+/* EDITABLE */
+.editable{cursor:pointer;border-bottom:1px dashed var(--bdr);border-radius:3px;padding:1px 3px;transition:background .15s}
+.editable:hover{background:var(--accL);border-bottom-color:var(--acc)}
+.edit-input{font-family:var(--mono);font-size:12px;border:1px solid var(--acc);border-radius:4px;padding:2px 5px;background:var(--surf);color:var(--txt);width:90px;outline:none}
+/* INPUTS */
+.ig{margin-bottom:.9rem}
+.ig label{display:block;font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;font-weight:500}
+.ig input,.ig select,.ig textarea{width:100%;background:var(--bg);border:1px solid var(--bdr);border-radius:7px;color:var(--txt);font-family:var(--mono);font-size:13px;padding:7px 10px;outline:none;transition:border-color .15s}
+.ig input:focus,.ig select:focus,.ig textarea:focus{border-color:var(--acc)}
+.ig input[type=text],.ig select,.ig textarea{font-family:var(--sans)}
+.igrid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.igrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+/* BENCHMARKS */
+.bbar{height:8px;border-radius:4px;background:var(--bdr);position:relative;margin-top:5px}
+.bfill{height:100%;border-radius:4px;transition:width .4s}
+.btgt{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--acc);border-radius:1px;opacity:.7}
+/* INSIGHTS */
+.ibox{background:var(--accL);border:1px solid #aecfbd;border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1.75rem}
+.ititle{font-family:var(--serif);font-size:15px;color:var(--acc);margin-bottom:.6rem;font-weight:600}
+.ilist{display:flex;flex-direction:column;gap:7px}
+.iitem{display:flex;gap:9px;font-size:13px;color:var(--txt);line-height:1.5}
+.idot{width:5px;height:5px;border-radius:50%;background:var(--acc);margin-top:7px;flex-shrink:0}
+.ic{border-radius:10px;padding:1rem 1.2rem;margin-bottom:.85rem;display:flex;gap:12px;align-items:flex-start}
+.ic.good{background:var(--accL);border:1px solid #aecfbd}
+.ic.warn{background:var(--ambL);border:1px solid #e8d098}
+.ic.bad{background:var(--redL);border:1px solid #e8b0b0}
+.ic.info{background:var(--bluL);border:1px solid #a8c0e0}
+.ic-icon{font-size:18px;flex-shrink:0}
+.ic-title{font-weight:500;font-size:13px;margin-bottom:2px}
+.ic-body{font-size:12px;color:var(--mut);line-height:1.5}
+.good .ic-title{color:var(--acc)}.warn .ic-title{color:var(--amb)}.bad .ic-title{color:var(--red)}.info .ic-title{color:var(--blu)}
+/* AI BOX */
+.ai-box{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:1.4rem;margin-bottom:1.75rem}
+.ai-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:0}
+.ai-head-left{display:flex;align-items:center;gap:10px}
+.ai-icon{width:32px;height:32px;background:var(--accL);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ai-title{font-family:var(--serif);font-size:16px;font-weight:500;color:var(--txt)}
+.ai-sub{font-size:12px;color:var(--mut);margin-top:1px}
+.ai-btn{background:var(--acc);border:none;color:#fff;padding:8px 18px;border-radius:7px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:500;transition:all .15s}
+.ai-btn:hover{background:var(--accM)}.ai-btn:disabled{opacity:.5;cursor:not-allowed}
+.ai-out{margin-top:1rem;display:none;border-top:1px solid var(--bdr);padding-top:1rem}
+.ai-out.show{display:block}
+.ai-section{margin-bottom:.85rem;background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:.9rem 1.1rem}
+.ai-section:last-child{margin-bottom:0}
+.ai-section-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);font-weight:500;margin-bottom:.5rem}
+.ai-section-body{font-size:13px;line-height:1.7;color:var(--txt)}
+.ai-section-body strong{color:var(--acc);font-weight:500}
+.ai-section-body p{margin-bottom:.4rem}.ai-section-body p:last-child{margin-bottom:0}
+.ai-section-body ul{margin:.3rem 0 .4rem 1.1rem}.ai-section-body li{margin-bottom:.25rem}
+.ai-loading{display:none;align-items:center;gap:8px;margin-top:1rem;font-size:13px;color:var(--mut);border-top:1px solid var(--bdr);padding-top:1rem}
+.ai-loading.show{display:flex}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:var(--acc);animation:blink 1.2s infinite}
+.ai-dot:nth-child(2){animation-delay:.2s}.ai-dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+/* TAGS */
+.tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;font-weight:500;margin-left:4px}
+.tag-cio{background:var(--accL);color:var(--acc)}.tag-top{background:#f0e8fc;color:#5a2e8a}.tag-new{background:var(--bluL);color:var(--blu)}
+/* TOOL NAV */
+.tool-nav{display:flex;gap:4px;background:var(--surf);border:1px solid var(--bdr);border-radius:12px;padding:4px;margin-bottom:1.75rem;flex-wrap:wrap}
+.tnav{flex:1;min-width:110px;padding:7px 10px;border:1.5px solid transparent;background:transparent;color:var(--mut);font-family:var(--sans);font-size:12px;font-weight:500;border-radius:9px;cursor:pointer;transition:all .15s;text-align:center;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tnav .ti{font-size:17px}
+.tnav.on{background:var(--surf);color:var(--acc);border-color:var(--acc)}
+.tnav:hover:not(.on){background:var(--accL);color:var(--acc)}
+.tool-panel{display:none}.tool-panel.on{display:block}
+/* MISC */
+.addbtn{background:var(--surf2);border:1px solid var(--bdrS);color:var(--mut);border-radius:7px;padding:4px 11px;cursor:pointer;font-size:12px;font-weight:500;margin-top:3px;display:inline-block;transition:all .15s}
+.addbtn:hover{border-color:var(--acc);color:var(--acc);background:var(--accL)}
+.rmbtn{background:var(--redL);border:1px solid #e8b0b0;color:var(--red);border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+.srow{display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:7px;align-items:end;margin-bottom:7px}
+.srow input{width:100%;background:var(--bg);border:1px solid var(--bdr);border-radius:6px;color:var(--txt);font-family:var(--mono);font-size:12px;padding:5px 8px;outline:none}
+.srow input:focus{border-color:var(--acc)}
+.cw{position:relative;width:100%}
+/* REVERSE CALC */
+.rev-box{background:var(--surf2);border-radius:10px;padding:1rem 1.2rem;margin-top:1rem}
+.rev-result{font-family:var(--mono);font-size:22px;font-weight:500;color:var(--acc);margin-top:.5rem}
+.rev-sub{font-size:11px;color:var(--mut);margin-top:2px}
+/* DATA BAR */
+.data-bar{background:var(--surf2);border:1px dashed var(--bdrS);border-radius:10px;padding:.85rem 1.2rem;margin-bottom:1.75rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.data-bar-label{font-size:12px;color:var(--mut);flex:1;line-height:1.4}
+.data-bar-label strong{color:var(--txt);display:block;margin-bottom:2px}
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--acc);color:#fff;padding:.75rem 1.25rem;border-radius:10px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+/* PERIOD HISTORY */
+.hist-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:1.75rem;background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:1rem 1.2rem}
+.hist-label{font-size:11px;color:var(--sub);font-weight:500;text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.hist-chips{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-height:26px;align-items:center}
+.hchip{background:var(--surf2);border:1px solid var(--bdr);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--mut);cursor:pointer;transition:all .15s;font-weight:500;display:flex;align-items:center;gap:4px;white-space:nowrap}
+.hchip:hover{border-color:var(--acc);color:var(--acc)}.hchip.active{background:var(--acc);border-color:var(--acc);color:#fff}
+.hdel{opacity:.5;font-size:13px;line-height:1}.hdel:hover{opacity:1}
+.hist-save{background:var(--acc);border:none;color:#fff;padding:5px 12px;border-radius:7px;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:500;transition:all .15s}
+.hist-save:hover{background:var(--accM)}
+.hist-none{font-size:12px;color:var(--sub);font-style:italic}
+/* PRINT */
+@media print{
+  header .hbtn,.tool-nav,.ob-actions,.ai-btn,.addbtn,.rmbtn,.data-bar,.hist-bar{display:none!important}
+  body{background:#fff}
+  main{padding:0;max-width:100%}
+  .panel{break-inside:avoid}
+}
+#printHead{display:none;margin-bottom:1.5rem;padding-bottom:1rem;border-bottom:2px solid var(--acc)}
+hr{border:none;border-top:1px solid var(--bdr);margin:1.25rem 0}
+#content{display:none}
+#content.on{display:block}
+#importFi{display:none}
+#importXl{display:none}
+footer{text-align:center;padding:1.75rem;border-top:1px solid var(--bdr);color:var(--sub);font-size:12px;margin-top:2rem;background:var(--surf)}
+footer strong{color:var(--acc)}
+@media(max-width:900px){
+  .twocol,.tcol,.mrow,.mrow4,.mrow3{grid-template-columns:1fr}
+  main{padding:1.25rem}
+  header{padding:1rem}
+}
+</style>
+</head>
+
+<body>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="importFi" accept=".json">
+<input type="file" id="importXl" accept=".xlsx,.xls,.csv">
+<header>
+  <span class="lmark">CFO Vault</span>
+  <span class="ltag">CFO In Your Pocket</span>
+  <button class="hbtn" id="btnSave" onclick="savePeriod()">📅 Save period</button>
+  <button class="hbtn" id="btnExportData" onclick="exportData()">📤 Export data</button>
+  <button class="hbtn" id="btnImportData" onclick="document.getElementById('importFi').click()">📥 Load saved</button>
+  <button class="hbtn pri" id="btnExport" onclick="exportPDF()">⬇ Export PDF</button>
+  <button class="hbtn" id="btnReset" onclick="resetApp()">↩ Start over</button>
+</header>
+<main>
+<div id="printHead">
+  <div style="display:flex;align-items:center;justify-content:space-between">
+    <div><div style="font-family:var(--serif);font-size:22px;color:var(--acc);font-weight:600">CFO Vault</div><div style="font-size:12px;color:var(--sub)">CFO In Your Pocket — Financial Health Report</div></div>
+    <div style="text-align:right;font-size:12px;color:var(--mut)" id="printMeta"></div>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div id="onboard">
+  <div class="ob-hero">
+    <div class="ob-headline">Your business finances,<br><em>finally explained.</em></div>
+    <div class="ob-sub">Drop in your P&L spreadsheet and instantly get a health score, cash flow forecast, break-even analysis, pricing optimizer, labor breakdown, tax estimate, and runway projection — all auto-populated from your file.</div>
+  </div>
+  <div class="ob-industry">
+    <div class="ob-ind-label">1 — Select your industry</div>
+    <div class="ind-grid" id="indGrid"></div>
+    <div style="margin-top:1.25rem;padding-top:1.25rem;border-top:1px solid var(--bdr)">
+      <div class="ob-ind-label" style="margin-bottom:.75rem">2 — Load your data</div>
+      <div class="ob-actions">
+        <button class="ob-btn pri" onclick="document.getElementById('importXl').click()">📊 Import P&L from Excel</button>
+        <button class="ob-btn" onclick="loadDemo()">Try with sample data</button>
+        <button class="ob-btn" onclick="document.getElementById('importFi').click()">📥 Load saved data</button>
+        <div class="ob-notice">Your data never leaves your device</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="parseStatus"></div>
+
+<!-- MAIN CONTENT -->
+<div id="content">
+
+  <!-- DATA BAR -->
+  <div class="data-bar">
+    <div class="data-bar-label"><strong>Your saved data lives in this browser only</strong>Export your periods as a file to reload on any device or share with your accountant.</div>
+    <button class="hbtn" onclick="exportData()" style="display:inline-block">📤 Export my data</button>
+    <button class="hbtn" onclick="document.getElementById('importFi').click()" style="display:inline-block">📥 Load saved data</button>
+  </div>
+
+  <!-- PERIOD HISTORY -->
+  <div class="hist-bar" id="histBar">
+    <span class="hist-label">Saved periods</span>
+    <div class="hist-chips" id="histChips"><span class="hist-none">No saved periods yet</span></div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button class="hist-save" onclick="savePeriod()">Save period</button>
+    </div>
+  </div>
+
+  <!-- SCORE + SNAPSHOT -->
+  <div class="sec" id="snapSec">Snapshot</div>
+  <div style="display:grid;grid-template-columns:auto 1fr;gap:18px;margin-bottom:1.75rem;align-items:start">
+    <div class="panel" style="text-align:center;min-width:158px">
+      <div class="ptitle" style="margin-bottom:.75rem">Health score</div>
+      <div id="scoreRing" style="display:flex;justify-content:center;margin-bottom:.75rem"></div>
+      <div id="scoreLabel" style="font-size:12px;color:var(--mut);line-height:1.4"></div>
+    </div>
+    <div>
+      <div class="mrow" id="snapCards"></div>
+      <div class="panel"><div class="ptitle" style="margin-bottom:.75rem">Benchmarks — <span id="benchInd"></span></div><div id="benchmarks"></div></div>
+    </div>
+  </div>
+
+  <!-- AI ANALYSIS -->
+  <div class="ai-box">
+    <div class="ai-head">
+      <div class="ai-head-left">
+        <div class="ai-icon">✦</div>
+        <div><div class="ai-title">AI financial advisor</div><div class="ai-sub" id="aiSub">Plain-language analysis with prioritized action items</div></div>
+      </div>
+      <button class="ai-btn" id="aiBtn" onclick="runAI()">Analyze with AI</button>
+    </div>
+    <div class="ai-loading" id="aiLoading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><span>Analyzing your financials...</span></div>
+    <div class="ai-out" id="aiOut"></div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="sec">Financial insights</div>
+  <div id="insights" class="ibox"><div class="ititle">Overview</div><div class="ilist" id="insightList"></div></div>
+
+  <!-- TOOL NAV -->
+  <div class="tool-nav" id="toolNav"></div>
+  <div id="toolPanels"></div>
+
+</div><!-- /content -->
+</main>
+<footer>Built for small business owners by <strong>CFO Vault</strong> — Financial clarity without the CFO price tag</footer>
+
+<script>
+// ── INDUSTRIES ────────────────────────────────────────────────────
+const INDS = {
+  restaurant:   {label:'Restaurant / Food',    icon:'🍽️', gmB:.65, netB:.07, laborB:.32, opexB:.18, tRev:'Revenue',         tCogs:'Food & Bev Cost',      tLabor:'Labor',         tOpex:'Overhead'},
+  retail:       {label:'Retail',               icon:'🛍️', gmB:.48, netB:.06, laborB:.15, opexB:.20, tRev:'Revenue',         tCogs:'Cost of Goods Sold',   tLabor:'Payroll',       tOpex:'Operating Expenses'},
+  agency:       {label:'Agency / Consulting',  icon:'💼', gmB:.55, netB:.18, laborB:.45, opexB:.18, tRev:'Billings',        tCogs:'Delivery Cost',        tLabor:'Team Salaries', tOpex:'Overhead'},
+  saas:         {label:'SaaS / Software',      icon:'💻', gmB:.78, netB:.20, laborB:.30, opexB:.25, tRev:'ARR / MRR',       tCogs:'Infrastructure',       tLabor:'Engineering',   tOpex:'Sales & Marketing'},
+  healthcare:   {label:'Healthcare Practice',  icon:'🏥', gmB:.45, netB:.15, laborB:.40, opexB:.18, tRev:'Patient Revenue', tCogs:'Medical Supplies',     tLabor:'Clinical Staff',tOpex:'Admin Overhead'},
+  construction: {label:'Construction / Trades',icon:'🏗️', gmB:.22, netB:.06, laborB:.35, opexB:.15, tRev:'Contract Revenue',tCogs:'Materials & Subs',     tLabor:'Field Labor',   tOpex:'Equipment & OH'},
+  realestate:   {label:'Real Estate',          icon:'🏠', gmB:.80, netB:.30, laborB:.20, opexB:.15, tRev:'Commission Rev',  tCogs:'Transaction Costs',    tLabor:'Agent Splits',  tOpex:'Marketing & OH'},
+  manufacturing:{label:'Manufacturing',        icon:'🏭', gmB:.32, netB:.08, laborB:.28, opexB:.18, tRev:'Net Sales',       tCogs:'Cost of Goods Made',   tLabor:'Direct Labor',  tOpex:'SG&A'},
+  fitness:      {label:'Fitness / Wellness',   icon:'💪', gmB:.58, netB:.15, laborB:.35, opexB:.18, tRev:'Membership Rev',  tCogs:'Program Costs',        tLabor:'Instructor Cost',tOpex:'Facility & Admin'},
+  logistics:    {label:'Logistics / Transport',icon:'🚛', gmB:.25, netB:.06, laborB:.40, opexB:.15, tRev:'Freight Revenue', tCogs:'Fuel & Maintenance',   tLabor:'Driver Labor',  tOpex:'Admin & OH'},
+  law:          {label:'Law Firm',             icon:'⚖️', gmB:.60, netB:.28, laborB:.45, opexB:.18, tRev:'Billings',        tCogs:'Cost of Services',     tLabor:'Staff Salaries',tOpex:'Overhead'},
+  msp:          {label:'IT Managed Services',  icon:'🖥️', gmB:.33, netB:.12, laborB:.35, opexB:.18, tRev:'Contract Revenue',tCogs:'MSP & Contractor Cost',tLabor:'Staff Salaries',tOpex:'Overhead / OPEX'},
+  other:        {label:'Other Business',       icon:'📊', gmB:.40, netB:.10, laborB:.30, opexB:.18, tRev:'Revenue',         tCogs:'Cost of Goods/Services',tLabor:'Labor',        tOpex:'Operating Expenses'},
+};
+
+// ── STATE ─────────────────────────────────────────────────────────
+let IND = null;
+let activePeriod = null;
+let editOverrides = {};
+let activeCharts = {};
+let activeTool = 'overview';
+
+let S = {
+  bizName:'', industry:'other', period:'',
+  revenue:0, cogs:0, labor:0, opex:0,
+  staff:[], mspItems:[], otherCosts:[],
+  // derived from P&L for all tools
+  cashOnHand:0, fixedCosts:0, variableCostPct:0,
+  pricePerUnit:0, costPerUnit:0, targetMargin:35,
+  competitorPrice:0, currentCash:0, avgMonthlyBurn:0,
+  filingStatus:'single', stateRate:5, otherIncome:0,
+  notes:'', cfMonths:[],
+  // scenario overrides
+  adjRevOverride:null, adjCogsOverride:null, adjLaborOverride:null, adjOpexOverride:null,
+};
+
+// ── HELPERS ───────────────────────────────────────────────────────
+const fmt  = n => '$' + Math.round(Math.abs(n||0)).toLocaleString();
+const pc   = n => ((n||0)*100).toFixed(1) + '%';
+const esc  = s => (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const gSal = () => S.staff.reduce((a,s)=>a+(s.total||0),0);
+const gMsp = () => S.mspItems.reduce((a,m)=>a+(m.annEst||0),0);
+const gOth = () => S.otherCosts.reduce((a,c)=>a+(+c.amount||0),0);
+
+// ── CALCULATIONS ──────────────────────────────────────────────────
+function getAdj() {
+  const c1 = +($('sr1')?.value||0)/100;
+  const c2 = +($('sr2')?.value||0)/100;
+  const c3 = +($('sr3')?.value||0)/100;
+  const c4 = +($('sr4')?.value||0)/100;
+  const adjRev   = editOverrides.rev   !== undefined ? editOverrides.rev   : S.revenue*(1+c1);
+  const adjCogs  = editOverrides.cogs  !== undefined ? editOverrides.cogs  : S.cogs*(1-c2);
+  const adjLabor = editOverrides.labor !== undefined ? editOverrides.labor : S.labor*(1-c3);
+  const adjOpex  = editOverrides.opex  !== undefined ? editOverrides.opex  : S.opex*(1-c4);
+  const baseTot = S.cogs + S.labor;
+  const adjTot  = adjCogs + adjLabor;
+  const baseGM  = S.revenue - baseTot;
+  const adjGM   = adjRev - adjTot;
+  const baseGMp = S.revenue ? baseGM/S.revenue : 0;
+  const adjGMp  = adjRev   ? adjGM/adjRev     : 0;
+  const baseNet = baseGM - S.opex;
+  const adjNet  = adjGM  - adjOpex;
+  return {c1,c2,c3,c4, adjRev,adjCogs,adjLabor,adjOpex,adjTot,adjGM,adjGMp,adjNet, baseTot,baseGM,baseGMp,baseNet};
+}
+
+function $ (id) { return document.getElementById(id); }
+
+// ── INIT ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    buildIndGrid();
+    $('importFi').addEventListener('change', handleJsonImport);
+    $('importXl').addEventListener('change', e => { if(e.target.files[0]) parseXl(e.target.files[0]); e.target.value=''; });
+  } catch(err) {
+    document.body.innerHTML = '<div style="padding:2rem;background:#fdf1f1;color:#9e2b2b;font-family:monospace;font-size:13px;border:1px solid #e8b0b0;margin:2rem;border-radius:8px"><strong>Page load error:</strong><br>' + err.message + '<br><br>' + (err.stack||'').replace(/\n/g,'<br>') + '</div>';
+  }
+});
+
+function buildIndGrid() {
+  const g = $('indGrid'); g.innerHTML = '';
+  Object.entries(INDS).forEach(([key,ind]) => {
+    const c = document.createElement('div');
+    c.className = 'ind-chip' + (S.industry===key?' sel':'');
+    c.innerHTML = `<span class="ii">${ind.icon}</span><span>${ind.label}</span>`;
+    c.onclick = () => {
+      document.querySelectorAll('.ind-chip').forEach(x=>x.classList.remove('sel'));
+      c.classList.add('sel');
+      S.industry = key; IND = {...ind,key};
+    };
+    g.appendChild(c);
+  });
+}
+
+// ── EXCEL PARSER ──────────────────────────────────────────────────
+function parseXl(file) {
+  if (!IND) { IND = {...INDS.other, key:'other'}; S.industry='other'; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array', cellDates:false});
+      const msgs = [];
+
+      // ── UNIVERSAL HELPERS ───────────────────────────────────────
+      const isN   = v => typeof v==='number' && isFinite(v) && v !== 0;
+      const asN   = v => isN(v) ? v : (typeof v==='string' ? parseFloat(v.replace(/[$,\s%()]/g,'').replace(/^\((.+)\)$/,'$1'))||0 : 0);
+      const cl    = v => (v==null?'':String(v)).trim();
+      const lc    = v => cl(v).toLowerCase().replace(/[^a-z0-9\s&\/]/g,' ').replace(/\s+/g,' ').trim();
+      const hasKw = (label, kws) => kws.some(kw => lc(label).includes(kw));
+      const isNeg = v => typeof v==='string' && /^\([\d,]+\)$/.test(v.trim()); // accounting negatives
+      const parseVal = v => {
+        if(isN(v)) return v;
+        if(typeof v==='string'){
+          const s=v.replace(/[$,\s]/g,'');
+          if(/^\([\d.]+\)$/.test(s)) return -parseFloat(s.slice(1,-1)); // (1234) = negative
+          return parseFloat(s)||0;
+        }
+        return 0;
+      };
+
+      // ── SHEET FINDER ─────────────────────────────────────────────
+      const allS = {};
+      wb.SheetNames.forEach(n => {
+        const raw = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:null, raw:true});
+        allS[n.toLowerCase().trim()] = raw;
+      });
+      const findSheet = (...kws) => {
+        const k = Object.keys(allS).find(k => kws.some(w => k.includes(w)));
+        return k ? allS[k] : null;
+      };
+      const firstSheet = allS[wb.SheetNames[0].toLowerCase().trim()];
+
+      // ── KEYWORD MAPS — comprehensive synonyms ────────────────────
+      const KW = {
+        revenue: ['total revenue','gross revenue','net revenue','total sales','gross sales',
+                  'net sales','total income','operating revenue','gross income','total income',
+                  'revenue','income','billings','contract revenue','patient revenue',
+                  'net patient revenue','membership revenue','freight revenue',
+                  'commission revenue','sales revenue','service revenue','fee revenue',
+                  'total billings','total fees','client revenue','project revenue'],
+        cogs:    ['cost of goods','cost of sales','cogs','direct costs','direct cost',
+                  'cost of services','cost of revenue','food cost','food & beverage',
+                  'food and beverage','material cost','materials','msp cost','msp salary',
+                  'contractor cost','delivery cost','program cost','cost of goods manufactured',
+                  'transaction costs','subcontractors','medical supplies','direct expenses',
+                  'job costs','cost of products','variable costs','direct labor cost',
+                  'cost of merchandise','merchandise cost'],
+        labor:   ['total labor','total labour','total payroll','total salaries','total wages',
+                  'total personnel','total staff','total compensation','total workforce',
+                  'labor & personnel','labour & personnel','payroll & benefits',
+                  'salaries & wages','salary & wages','salaries and wages',
+                  'labor cost','labour cost','payroll cost','staff cost','workforce cost',
+                  'personnel cost','employee cost','payroll expense','staffing cost',
+                  'clinical staff','direct labor','agent splits','team salaries',
+                  'labor','labour','payroll','salaries','wages','personnel'],
+        opex:    ['total opex','total overhead','total operating expenses','total operating',
+                  'total indirect','total fixed','total g&a',
+                  'opex','overhead','operating expenses','sg&a','s&g&a',
+                  'selling general','general & admin','general and admin',
+                  'general and administrative','administrative expenses','administrative costs',
+                  'admin expense','admin costs','indirect costs','indirect expenses',
+                  'facilities','operating overhead','fixed overhead','other expenses',
+                  'occupancy','depreciation','utilities','insurance','rent',
+                  'marketing expense','marketing costs','total expenses'],
+        cashOnHand:  ['cash on hand','cash balance','bank balance','beginning cash',
+                      'opening cash','cash and cash equivalents','cash position','total cash'],
+        fixedCosts:  ['fixed costs','fixed expenses','monthly fixed','total fixed'],
+        variablePct: ['variable cost','variable expense'],
+        currentCash: ['current cash','ending cash','closing cash'],
+        monthlyBurn: ['monthly burn','burn rate','total monthly expenses'],
+        grossProfit: ['gross profit','total gross profit','gross margin $','gross margin dollar'],
+        netIncome:   ['net income','net profit','net loss','bottom line',
+                      'net earnings','profit after tax','operating income','ebitda','ebit'],
+      };
+
+      // ── SMART ROW SCANNER ─────────────────────────────────────────
+      function scanSheet(data) {
+        if(!data || !data.length) return {};
+
+        // Detect thousands multiplier
+        let multiplier = 1;
+        const flatText = data.flat().map(cl).join(' ').toLowerCase();
+        const allNums = data.flat().map(v=>Math.abs(parseVal(v))).filter(v=>v>0);
+        const maxNum = allNums.length ? Math.max(...allNums) : 0;
+        if(maxNum<100000&&(flatText.includes('thousands')||flatText.includes('(000)')||flatText.includes('in 000'))) multiplier=1000;
+
+        // Detect annual total column by finding month header row
+        const moNames=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+        let annualCol=-1;
+        for(let ri=0;ri<Math.min(data.length,10);ri++){
+          const row=data[ri]; if(!row) continue;
+          const moCount=row.filter(v=>moNames.includes(lc(cl(v)))).length;
+          if(moCount>=6){
+            let lastMoCol=-1;
+            row.forEach((v,ci)=>{if(moNames.includes(lc(cl(v))))lastMoCol=ci;});
+            for(let ci=lastMoCol+1;ci<row.length;ci++){
+              const h=lc(cl(row[ci]));
+              if(h.includes('total')||h.includes('annual')||h.includes('ytd')||h.includes('full year')){annualCol=ci;break;}
+            }
+            if(annualCol<0) annualCol=lastMoCol+1;
+            break;
+          }
+        }
+
+        // isPct: skip percentage-looking decimals (0.xx values)
+        const isPct=v=>typeof v==='number'&&Math.abs(v)>0&&Math.abs(v)<=1.5&&!Number.isInteger(v);
+        // isTotalRow: "Total X" or "X Total" rows are more reliable than line items
+        const isTotalRow=label=>{const l=lc(label);return l.startsWith('total ')||l.endsWith(' total')||l.includes('total');};
+
+        // Collect ALL candidates per field, then pick best
+        const candidates={revenue:[],cogs:[],labor:[],opex:[],cashOnHand:[],fixedCosts:[],
+                          variablePct:[],currentCash:[],monthlyBurn:[],grossProfit:[],netIncome:[]};
+
+        data.forEach((row,ri)=>{
+          if(!row||!row.length) return;
+          let label='',labelCol=-1;
+          for(let ci=0;ci<Math.min(5,row.length);ci++){
+            const v=cl(row[ci]);
+            if(v&&v.length>1&&!/^\d+$/.test(v)&&!/^[\$\.\,\-\(\)%]+$/.test(v)){label=v;labelCol=ci;break;}
+          }
+          if(!label) return;
+
+          const nums_raw=[];
+          for(let ci=labelCol+1;ci<row.length;ci++){
+            const v=parseVal(row[ci])*multiplier;
+            if(Math.abs(v)>0&&!isPct(row[ci])) nums_raw.push({val:v,ci});
+          }
+          if(!nums_raw.length) return;
+
+          const moNums=nums_raw.filter(n=>annualCol<0||n.ci<annualCol);
+          const annNum=annualCol>=0?nums_raw.find(n=>n.ci===annualCol):null;
+          let bestVal=0,moArr=null;
+
+          if(annNum){
+            bestVal=annNum.val;
+            if(moNums.length>=3) moArr=moNums.slice(0,12).map(n=>n.val);
+          }else if(nums_raw.length>=10){
+            const first12=nums_raw.slice(0,12).reduce((a,n)=>a+n.val,0);
+            const last=nums_raw[nums_raw.length-1].val;
+            bestVal=Math.abs(last-first12)/Math.max(Math.abs(first12),1)<0.05?last:first12;
+            moArr=nums_raw.slice(0,12).map(n=>n.val);
+          }else if(nums_raw.length>=2){
+            bestVal=nums_raw.reduce((a,n)=>Math.abs(n.val)>Math.abs(a)?n.val:a,nums_raw[0].val);
+          }else{
+            bestVal=nums_raw[0].val;
+          }
+
+          // Score: total rows get +10, having annual col gets +1
+          const score=(isTotalRow(label)?10:0)+(annNum?1:0);
+
+          for(const[key,kws]of Object.entries(KW)){
+            if(hasKw(label,kws)){
+              candidates[key].push({val:Math.abs(bestVal),raw:bestVal,moArr,label,ri,score});
+              break;
+            }
+          }
+        });
+
+        // Pick best candidate per field: highest score, then largest value
+        const found={};
+        for(const[key,cands]of Object.entries(candidates)){
+          if(!cands.length) continue;
+          cands.sort((a,b)=>b.score-a.score||b.val-a.val);
+          found[key]=cands[0];
+        }
+        return found;
+      }
+
+      // ── SCAN MULTIPLE SHEETS ──────────────────────────────────────
+      // Priority: dedicated P&L sheet > summary > first sheet
+      const plSheet   = findSheet('p&l','pl ','income','profit','loss','annual') || firstSheet;
+      const sumSheet  = findSheet('summary','report','overview','dashboard') || plSheet;
+      const salSheet  = findSheet('salar','payroll','staff','personnel','employee','hr','people','team');
+      const mspSheet  = findSheet('msp','contractor','vendor','managed','resource','supplier','freelance');
+
+      // Scan all relevant sheets, merge results (later scans win on conflicts)
+      const firstData = scanSheet(firstSheet);
+      const plData    = scanSheet(plSheet);
+      const sumData   = plSheet===firstSheet ? {} : scanSheet(sumSheet);
+      // Merge: firstData as base, plData overrides, sumData overrides
+      // For each field pick the candidate with highest score across all sheets
+      const allCandidates = {};
+      [firstData, plData, sumData].forEach(d => {
+        Object.entries(d).forEach(([key,val]) => {
+          if(!allCandidates[key]) allCandidates[key] = [];
+          allCandidates[key].push(val);
+        });
+      });
+      const merged = {};
+      Object.entries(allCandidates).forEach(([key,cands]) => {
+        if(!cands.length) return;
+        // Pick best: highest score, then largest value
+        merged[key] = cands.sort((a,b)=>b.score-a.score||b.val-a.val)[0];
+      });
+
+      // ── POPULATE S FROM SCANNED DATA ──────────────────────────────
+      const set = (field, key, fallbackFn) => {
+        if(merged[key] && merged[key].val > 0) {
+          S[field] = Math.round(merged[key].val);
+          return true;
+        }
+        if(fallbackFn) { const v=fallbackFn(); if(v) S[field]=Math.round(v); }
+        return false;
+      };
+
+      set('revenue', 'revenue');
+      set('cogs',    'cogs');
+      set('labor',   'labor');
+      set('opex',    'opex');
+
+      // Derive COGS from gross profit if COGS not found
+      if(!S.cogs && S.revenue && merged.grossProfit) {
+        S.cogs = Math.round(S.revenue - merged.grossProfit.val);
+      }
+      // Derive OPEX from net if not found
+      if(!S.opex && S.revenue && S.cogs && merged.netIncome) {
+        const grossM = S.revenue - S.cogs - S.labor;
+        S.opex = Math.round(grossM - merged.netIncome.val);
+        if(S.opex < 0) S.opex = 0;
+      }
+
+      // Cash / burn / etc
+      set('cashOnHand', 'cashOnHand');
+      set('currentCash', 'currentCash', ()=>S.cashOnHand||null);
+      set('fixedCosts', 'fixedCosts');
+
+      // Derive sensible defaults from P&L if specific fields not found
+      if(!S.cashOnHand && S.revenue) S.cashOnHand = Math.round(S.revenue * 0.08);
+      if(!S.currentCash) S.currentCash = S.cashOnHand;
+      if(!S.fixedCosts && S.opex) S.fixedCosts = Math.round(S.opex/12 * 0.7);
+      if(!S.variableCostPct && S.cogs && S.revenue) S.variableCostPct = Math.round(S.cogs/S.revenue*100*0.45);
+      if(!S.avgMonthlyBurn && S.opex) S.avgMonthlyBurn = Math.round((S.opex+S.cogs+S.labor)/12);
+      if(!S.costPerUnit && S.cogs) S.costPerUnit = Math.round((S.cogs+S.labor)/12);
+      if(!S.pricePerUnit && S.revenue) S.pricePerUnit = Math.round(S.revenue/12);
+      if(!S.targetMargin) S.targetMargin = Math.round((IND?.gmB||.35)*100);
+
+      // ── MONTHLY DATA ──────────────────────────────────────────────
+      const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const revMo = merged.revenue?.moArr;
+      const cogsMo = merged.cogs?.moArr;
+      const laborMo = merged.labor?.moArr;
+      const opexMo = merged.opex?.moArr;
+      if(revMo && revMo.length >= 3) {
+        S.cfMonths = revMo.slice(0,12).map((rev,i) => ({
+          month: MO[i]||`Mo${i+1}`,
+          revenue: Math.round(Math.abs(rev)),
+          expenses: Math.round(Math.abs((cogsMo?.[i]||0)+(laborMo?.[i]||0)+(opexMo?.[i]||0)) || (S.cogs+S.labor+S.opex)/12)
+        }));
+      }
+
+      // ── STAFF PARSER — universal ───────────────────────────────────
+      function parseStaffSheet(data) {
+        if(!data || !data.length) return false;
+        // Strategy: find a row that has name-like header + salary-like columns
+        for(let ri=0; ri<Math.min(data.length,15); ri++) {
+          const row = data[ri];
+          if(!row) continue;
+          // Look for name column
+          const nci = row.findIndex(c => {
+            const s = lc(cl(c));
+            return s==='name' || s==='employee name' || s==='employee' || s==='staff name' ||
+                   s==='full name' || (s.includes('name') && s.length<=20);
+          });
+          if(nci < 0) continue;
+          // Look for salary columns
+          let bci=-1, tci=-1, rci=-1;
+          row.forEach((c,ci) => {
+            const s=lc(cl(c));
+            if(['base','base salary','annual salary','base pay','base compensation','salary'].includes(s) && bci<0) bci=ci;
+            if(['total','total comp','total compensation','annual total','total annual','annual','full comp','gross'].includes(s) && tci<0) tci=ci;
+            if(['rate','hourly','hourly rate','pay rate'].includes(s) && rci<0) rci=ci;
+          });
+          // Scan rows below header
+          const people = [];
+          for(let ri2=ri+1; ri2<data.length; ri2++) {
+            const r = data[ri2]; if(!r) continue;
+            const nm = cl(r[nci]);
+            if(!nm || nm.length < 2) continue;
+            if(['total','subtotal','grand total','nan',''].includes(nm.toLowerCase())) continue;
+            if(lc(nm)===lc(cl(row[nci]))) continue; // skip if same as header
+            const base = bci>=0 ? Math.abs(parseVal(r[bci])) : 0;
+            const total = tci>=0 ? Math.abs(parseVal(r[tci])) : 0;
+            const rate  = rci>=0 ? Math.abs(parseVal(r[rci])) : 0;
+            // If rate found, estimate annual: assume full time (2080 hrs/yr)
+            const annFromRate = rate>0 && rate<1000 ? rate*2080 : rate>1000?rate:0;
+            const bestTotal = total||base||annFromRate;
+            if(bestTotal < 100) continue; // skip noise
+            people.push({name:nm, base:Math.round(base||bestTotal*.85), total:Math.round(bestTotal)});
+          }
+          if(people.length > 0) { S.staff = people; return true; }
+        }
+        return false;
+      }
+
+      // Try dedicated salary sheet first, then P&L sheet
+      const salParsed = parseStaffSheet(salSheet) || parseStaffSheet(plSheet !== firstSheet ? plSheet : null) || parseStaffSheet(firstSheet);
+      if(S.staff.length) {
+        msgs.push({t:'ok', m:`Staff: ${S.staff.slice(0,3).map(s=>s.name).join(', ')}${S.staff.length>3?' + '+(S.staff.length-3)+' more':''}`});
+      } else if(S.labor > 0) {
+        S.staff = [{name:`${IND?.tLabor||'Labor'} (combined)`, base:Math.round(S.labor*.85), total:Math.round(S.labor)}];
+        msgs.push({t:'warn', m:'No individual staff found — showing combined labor. Add a Salaries/Staff/People sheet for breakdown.'});
+      }
+
+      // ── MSP / CONTRACTOR PARSER — universal ───────────────────────
+      function parseMspSheet(data) {
+        if(!data || !data.length) return false;
+        for(let ri=0; ri<Math.min(data.length,15); ri++) {
+          const row = data[ri]; if(!row) continue;
+          const nci = row.findIndex(c => {
+            const s=lc(cl(c));
+            return ['contractor','vendor','resource','company','provider','supplier','name','freelancer','consultant'].includes(s) ||
+                   (s.includes('name') && s.length<25);
+          });
+          if(nci<0) continue;
+          let hrci=-1, rateci=-1, anci=-1, moci=-1;
+          row.forEach((c,ci)=>{
+            const s=lc(cl(c));
+            if((s.includes('hour')||s==='hrs'||s==='hours/mo'||s==='avg hrs')&&hrci<0) hrci=ci;
+            if((s.includes('rate')||s==='$/hr'||s==='hourly')&&rateci<0) rateci=ci;
+            if((s.includes('annual')||s.includes('yearly')||s==='total'||s==='total cost')&&anci<0) anci=ci;
+            if((s.includes('month')&&s.includes('cost'))||s==='monthly'&&moci<0) moci=ci;
+          });
+          const items = [];
+          for(let ri2=ri+1; ri2<data.length; ri2++) {
+            const r=data[ri2]; if(!r) continue;
+            const nm=cl(r[nci]);
+            if(!nm||nm.length<2) continue;
+            if(['total','grand total','subtotal','nan',''].includes(nm.toLowerCase())) continue;
+            const hrs  = hrci>=0   ? Math.abs(parseVal(r[hrci]))   : 0;
+            const rate = rateci>=0 ? Math.abs(parseVal(r[rateci])) : 0;
+            const ann  = anci>=0   ? Math.abs(parseVal(r[anci]))   : 0;
+            const mo   = moci>=0   ? Math.abs(parseVal(r[moci]))   : 0;
+            const est  = ann || (mo*12) || (hrs*rate*12);
+            if(est < 100 && hrs===0) continue;
+            items.push({name:nm, hrs:Math.round(hrs*10)/10, rate:Math.round(rate*100)/100, annEst:Math.round(est)});
+          }
+          if(items.length>0) { S.mspItems=items.sort((a,b)=>b.annEst-a.annEst); return true; }
+        }
+        return false;
+      }
+
+      parseMspSheet(mspSheet) || parseMspSheet(plSheet !== firstSheet ? plSheet : null);
+      if(S.mspItems.length) {
+        msgs.push({t:'ok', m:`Contractors: ${S.mspItems.length} found. Top: ${S.mspItems[0].name} (~${fmt(S.mspItems[0].annEst)}/yr)`});
+      }
+
+      // ── STATUS MESSAGES ───────────────────────────────────────────
+      if(!S.bizName) S.bizName = file.name.replace(/\.(xlsx|xls|csv)$/i,'').replace(/[_\-]+/g,' ');
+      const foundFields = [];
+      if(S.revenue>0) foundFields.push(`revenue ${fmt(S.revenue)}`);
+      if(S.cogs>0)    foundFields.push(`COGS ${fmt(S.cogs)}`);
+      if(S.labor>0)   foundFields.push(`labor ${fmt(S.labor)}`);
+      if(S.opex>0)    foundFields.push(`OPEX ${fmt(S.opex)}`);
+
+      if(foundFields.length === 0) {
+        msgs.push({t:'err', m:'No financial data found. Check that your file has labeled rows (e.g. "Revenue", "Cost of Goods", "Payroll") with numeric values. Try manual entry if your file uses unusual labels.'});
+      } else {
+        msgs.push({t:'ok', m:`Imported: ${foundFields.join(', ')} (from "${wb.SheetNames[0]}"${wb.SheetNames.length>1?` + ${wb.SheetNames.length-1} other sheet(s)`:''})`});
+        if(foundFields.length < 3) msgs.push({t:'warn', m:`Some fields not found — found ${foundFields.length} of 4. Check your file has rows labeled Revenue, Cost of Goods/Services, Labor/Payroll, and Expenses. The other tools will use estimates.`});
+      }
+
+      showStatus(msgs);
+      if(foundFields.length > 0) {
+        $('onboard').style.display='none';
+        go();
+      }
+    } catch(err) {
+      showStatus([{t:'err', m:'Could not read file: '+err.message+'. Try a different format or use manual entry.'}]);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+
+// ── GO ────────────────────────────────────────────────────────────
+function go() {
+  if(!IND) { IND={...INDS[S.industry||'other'],key:S.industry||'other'}; }
+  $('content').classList.add('on');
+  ['btnSave','btnExportData','btnImportData','btnExport','btnReset'].forEach(id=>$(id).style.display='block');
+  $('snapSec').textContent=`Snapshot — ${S.bizName||IND.label}${S.period?' · '+S.period:''}`;
+  $('benchInd').textContent=IND.label;
+  buildToolNav();
+  buildToolPanels();
+  renderHistBar();
+  ['sr1','sr2','sr3','sr4'].forEach(id=>{
+    const el=$(id); if(el) el.addEventListener('input',()=>{editOverrides={};render();});
+  });
+  render();
+}
+
+// ── TOOL NAV ──────────────────────────────────────────────────────
+const TOOLS=[
+  {key:'overview', label:'P&L Overview',    icon:'📊'},
+  {key:'cashflow', label:'Cash Flow',        icon:'💧'},
+  {key:'breakeven',label:'Break-Even',       icon:'⚖️'},
+  {key:'pricing',  label:'Pricing',          icon:'🏷️'},
+  {key:'labor',    label:'Labor / Staff',    icon:'👥'},
+  {key:'tax',      label:'Tax Estimate',     icon:'🧾'},
+  {key:'runway',   label:'Runway',           icon:'🛫'},
+];
+
+function buildToolNav() {
+  const nav=$('toolNav'); nav.innerHTML='';
+  TOOLS.forEach(t=>{
+    const btn=document.createElement('button');
+    btn.className='tnav'+(t.key===activeTool?' on':'');
+    btn.innerHTML=`<span class="ti">${t.icon}</span><span>${t.label}</span>`;
+    btn.onclick=()=>switchTool(t.key);
+    nav.appendChild(btn);
+  });
+}
+
+function switchTool(key) {
+  activeTool=key;
+  document.querySelectorAll('.tnav').forEach((b,i)=>b.classList.toggle('on',TOOLS[i].key===key));
+  document.querySelectorAll('.tool-panel').forEach(p=>p.classList.remove('on'));
+  const p=$('tool-'+key); if(p) p.classList.add('on');
+  renderTool(key);
+}
+
+function buildToolPanels() {
+  $('toolPanels').innerHTML=TOOLS.map(t=>`<div class="tool-panel${t.key===activeTool?' on':''}" id="tool-${t.key}"></div>`).join('');
+  TOOLS.forEach(t=>renderTool(t.key));
+}
+
+// ── MASTER RENDER ─────────────────────────────────────────────────
+function render() {
+  renderSnap();
+  renderScore();
+  renderBenchmarks();
+  renderInsights();
+  renderTool(activeTool);
+}
+
+function renderTool(key) {
+  switch(key) {
+    case 'overview':  renderOverview();  break;
+    case 'cashflow':  renderCashFlow();  break;
+    case 'breakeven': renderBreakEven(); break;
+    case 'pricing':   renderPricing();   break;
+    case 'labor':     renderLabor();     break;
+    case 'tax':       renderTax();       break;
+    case 'runway':    renderRunway();    break;
+  }
+}
+
+// ── SNAPSHOT CARDS ────────────────────────────────────────────────
+function renderSnap() {
+  const a=getAdj();
+  $('snapCards').innerHTML=`
+    <div class="mc ${a.baseGMp>=IND.gmB?'cg':a.baseGMp<IND.gmB*.7?'cr':'cw'}">
+      <div class="ml">Gross margin</div>
+      <div class="mv ${a.baseGMp>=IND.gmB?'vg':a.baseGMp<IND.gmB*.7?'vr':'va'}">${pc(a.baseGMp)}</div>
+      <div class="ms">${fmt(a.baseGM)}/yr · target ${pc(IND.gmB)}</div></div>
+    <div class="mc ${a.baseNet>=0?'cg':'cr'}">
+      <div class="ml">Net margin</div>
+      <div class="mv ${a.baseNet>=0?'vg':'vr'}">${pc(S.revenue?a.baseNet/S.revenue:0)}</div>
+      <div class="ms">${a.baseNet<0?'-':''}${fmt(a.baseNet)}/yr</div></div>
+    <div class="mc cb">
+      <div class="ml">${IND.tRev}</div>
+      <div class="mv">${fmt(S.revenue)}</div>
+      <div class="ms">${fmt(S.revenue/12)}/mo</div></div>
+    <div class="mc cw">
+      <div class="ml">Total COGS + Labor</div>
+      <div class="mv va">${fmt(a.baseTot)}</div>
+      <div class="ms">${S.revenue?Math.round(a.baseTot/S.revenue*100):0}% of revenue</div></div>
+    <div class="mc">
+      <div class="ml">Adjusted GM</div>
+      <div class="mv vg">${pc(a.adjGMp)}</div>
+      <div class="ms">${a.adjGMp>=a.baseGMp?'+':''}${((a.adjGMp-a.baseGMp)*100).toFixed(1)}pp vs current</div></div>`;
+}
+
+// ── SCORE ──────────────────────────────────────────────────────────
+function renderScore() {
+  const a=getAdj();
+  const n=S.revenue?a.baseNet/S.revenue:0, lb=S.revenue?S.labor/S.revenue:0, ob=S.revenue?S.opex/S.revenue:0;
+  let pts=0;
+  if(a.baseGMp>=IND.gmB)pts+=35;else if(a.baseGMp>=IND.gmB*.75)pts+=22;else if(a.baseGMp>0)pts+=10;
+  if(n>=IND.netB)pts+=30;else if(n>=IND.netB*.5)pts+=18;else if(n>=0)pts+=8;
+  if(lb<=IND.laborB)pts+=20;else if(lb<=IND.laborB*1.3)pts+=12;else pts+=4;
+  if(ob<=IND.opexB)pts+=15;else if(ob<=IND.opexB*1.3)pts+=9;else pts+=3;
+  const sc=pts>=80?{g:'A',c:'sA',l:'Healthy — strong margins, on benchmark'}:pts>=60?{g:'B',c:'sB',l:'Good — solid, one or two areas to improve'}:pts>=40?{g:'C',c:'sC',l:'Needs attention — margin pressure'}:{g:'D',c:'sD',l:'At risk — significant issues to address'};
+  $('scoreRing').innerHTML=`<div class="score-ring ${sc.c}">${sc.g}</div>`;
+  $('scoreLabel').textContent=sc.l;
+}
+
+// ── BENCHMARKS ────────────────────────────────────────────────────
+function renderBenchmarks() {
+  const a=getAdj(), lb=S.revenue?S.labor/S.revenue:0, ob=S.revenue?S.opex/S.revenue:0;
+  const benches=[
+    {l:'Gross margin',          val:a.baseGMp, target:IND.gmB,   min:.05,max:.95,inv:false},
+    {l:'Net margin',            val:S.revenue?a.baseNet/S.revenue:0, target:IND.netB, min:-.1,max:.5,inv:false},
+    {l:`${IND.tLabor} % of rev`,val:lb,        target:IND.laborB,min:0, max:.8, inv:true},
+    {l:`${IND.tOpex} % of rev`, val:ob,        target:IND.opexB, min:0, max:.5, inv:true},
+  ];
+  $('benchmarks').innerHTML=benches.map(b=>{
+    const norm=(v,mn,mx)=>Math.max(0,Math.min(100,(v-mn)/(mx-mn)*100));
+    const fw=norm(b.val,b.min,b.max),tw=norm(b.target,b.min,b.max);
+    const good=b.inv?b.val<=b.target*1.2:b.val>=b.target*.85;
+    const color=good?'var(--acc)':b.val>=(b.inv?b.target*1.5:b.target*.5)?'var(--amb)':'var(--red)';
+    return `<div style="margin-bottom:.85rem">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="color:var(--mut)">${b.l}</span>
+        <span style="font-family:var(--mono);font-weight:500;color:${color}">${pc(b.val)}</span>
+      </div>
+      <div class="bbar"><div class="bfill" style="width:${fw}%;background:${color}"></div><div class="btgt" style="left:${tw}%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--sub);margin-top:2px">
+        <span>${pc(b.min)}</span><span style="color:var(--acc)">Target: ${pc(b.target)}</span><span>${pc(b.max)}</span>
+      </div></div>`;
+  }).join('');
+}
+
+// ── INSIGHTS ──────────────────────────────────────────────────────
+function renderInsights() {
+  const a=getAdj(), n=S.revenue?a.baseNet/S.revenue:0, lb=S.revenue?S.labor/S.revenue:0;
+  const ins=[];
+  if(a.baseGMp>=IND.gmB&&a.baseNet>=0) ins.push(`Gross margin at ${pc(a.baseGMp)} meets the ${IND.label} benchmark of ${pc(IND.gmB)}. Net margin is positive at ${pc(n)}.`);
+  else if(a.baseGMp<IND.gmB*.7) ins.push(`Gross margin at ${pc(a.baseGMp)} is well below the ${pc(IND.gmB)} benchmark. This is your most urgent financial priority.`);
+  else ins.push(`Gross margin at ${pc(a.baseGMp)} is approaching the ${pc(IND.gmB)} target. Use the scenario levers to model what gets you there.`);
+  if(a.baseNet<0) ins.push(`Net loss of ${fmt(Math.abs(a.baseNet))} — the business is spending more than it earns. The Pricing and Break-Even tools will help identify the path to profitability.`);
+  if(lb>IND.laborB*1.3) ins.push(`Labor at ${pc(lb)} of revenue is above the ${pc(IND.laborB)} benchmark. Check the Labor/Staff tool for a detailed breakdown.`);
+  if(!ins.length) ins.push('Margins look solid. Use the scenario levers to stress-test future changes in costs or pricing.');
+  $('insightList').innerHTML=ins.map(t=>`<div class="iitem"><div class="idot"></div><span>${t}</span></div>`).join('');
+  $('insights').querySelector('.ititle').textContent=`Analysis — ${S.bizName||IND.label}`;
+}
+
+// ── OVERVIEW TOOL ─────────────────────────────────────────────────
+function renderOverview() {
+  const el=$('tool-overview'); if(!el) return;
+  const a=getAdj();
+  el.innerHTML=`
+    <div class="sec">Scenario modeling — ${S.bizName||IND.label}</div>
+    <div class="tcol">
+      <div class="panel">
+        <div class="ptitle">Scenario levers</div>
+        <div class="ig" style="margin-bottom:1rem"><label>Scenario name</label><input type="text" id="scenName" style="font-family:var(--sans)" placeholder="e.g. Reprice + cut labor option A" value="${esc(S.notes||'')}"></div>
+        <div class="sg"><div class="sh"><label class="sl">Revenue increase</label><span class="sv" id="lv1">0%</span></div><input type="range" id="sr1" min="0" max="50" step="1" value="0"></div>
+        <div class="sg"><div class="sh"><label class="sl">${IND.tCogs} reduction</label><span class="sv" id="lv2">0%</span></div><input type="range" id="sr2" min="0" max="50" step="1" value="0"></div>
+        <div class="sg"><div class="sh"><label class="sl">${IND.tLabor} reduction</label><span class="sv" id="lv3">0%</span></div><input type="range" id="sr3" min="0" max="40" step="1" value="0"></div>
+        <div class="sg"><div class="sh"><label class="sl">${IND.tOpex} reduction</label><span class="sv" id="lv4">0%</span></div><input type="range" id="sr4" min="0" max="30" step="1" value="0"></div>
+        <hr>
+        <div style="font-size:12px;font-weight:500;color:var(--mut);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.07em">Target margin calculator</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:.5rem;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--mut);white-space:nowrap">I want</label>
+          <input type="number" id="tgtGM" value="${S.targetMargin||35}" min="1" max="90" style="width:60px;border:1px solid var(--bdr);border-radius:6px;padding:4px 7px;font-family:var(--mono);font-size:13px;background:var(--bg);color:var(--txt);outline:none" oninput="calcReverse()">
+          <label style="font-size:12px;color:var(--mut)">% gross margin via</label>
+          <select id="revLever" onchange="calcReverse()" style="border:1px solid var(--bdr);border-radius:6px;padding:4px 7px;font-family:var(--sans);font-size:12px;background:var(--bg);color:var(--txt);outline:none;cursor:pointer">
+            <option value="revenue">Revenue increase</option>
+            <option value="cogs">COGS reduction</option>
+            <option value="labor">Labor reduction</option>
+          </select>
+        </div>
+        <div class="rev-box"><div style="font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.07em">Required change</div><div class="rev-result" id="revResult">—</div><div class="rev-sub" id="revSub"></div></div>
+        <hr>
+        <div class="cw" style="height:185px"><canvas id="ov-chart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.15rem">
+          <div class="ptitle">P&L — before vs after</div>
+          <span style="font-size:11px;color:var(--sub)">Click adjusted values to edit directly</span>
+        </div>
+        <div class="psub">Drag levers or click any adjusted value to set exact numbers</div>
+        <table id="ov-table"></table>
+      </div>
+    </div>
+    <div class="sec">Notes</div>
+    <div class="panel" style="margin-bottom:1.75rem">
+      <textarea id="periodNotes" rows="3" style="width:100%;background:var(--bg);border:1px solid var(--bdr);border-radius:8px;padding:10px;font-family:var(--sans);font-size:13px;color:var(--txt);outline:none;resize:vertical;line-height:1.6" placeholder="Context for this period — seasonal factors, one-time costs, upcoming changes..." oninput="S.notes=this.value">${esc(S.notes)}</textarea>
+    </div>`;
+
+  // Wire sliders
+  ['sr1','sr2','sr3','sr4'].forEach((id,i)=>{
+    const el=$(id); if(!el) return;
+    el.addEventListener('input',()=>{
+      editOverrides={};
+      $(`lv${i+1}`).textContent=el.value+'%';
+      renderOverviewData();
+    });
+  });
+  renderOverviewData();
+  calcReverse();
+}
+
+function renderOverviewData() {
+  const a=getAdj();
+  // P&L table
+  const rows=[
+    {l:IND.tRev,      b:S.revenue,   adj:a.adjRev,   lib:false, ek:'rev'},
+    {l:IND.tCogs,     b:S.cogs,      adj:a.adjCogs,  lib:true,  ek:'cogs'},
+    {l:IND.tLabor,    b:S.labor,     adj:a.adjLabor, lib:true,  ek:'labor'},
+    {l:'Total COGS',  b:a.baseTot,   adj:a.adjTot,   lib:true,  tot:true},
+    {l:'Gross margin',b:a.baseGM,    adj:a.adjGM,    lib:false, tot:true, pcts:[a.baseGMp,a.adjGMp]},
+    {l:IND.tOpex,     b:S.opex,      adj:a.adjOpex,  lib:true,  ek:'opex'},
+    {l:'Net margin',  b:a.baseNet,   adj:a.adjNet,   lib:false, tot:true},
+  ];
+  let t=`<thead><tr><th>Line item</th><th class="tr">Current</th><th class="tr">Adjusted <span style="font-weight:400;opacity:.6">(click to edit)</span></th><th class="tr">Change</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const delta=r.adj-r.b, good=r.lib?delta<0:delta>0;
+    const dc=delta===0?'':(good?'vg':'vr');
+    const cls=r.tot?'ttot':'';
+    const isM=(r.l==='Gross margin'||r.l==='Net margin');
+    const pctStr=r.pcts?` <span style="font-size:10px;color:var(--sub)">(${pc(r.pcts[0])} → ${pc(r.pcts[1])})</span>`:'';
+    const adjCell=r.ek
+      ?`<td class="tr tm ${isM?(r.adj<0?'vr':'vg'):''} editable" data-ek="${r.ek}" onclick="startEdit(this,'${r.ek}',${r.adj})">${r.adj<0?'-':''}${fmt(r.adj)}</td>`
+      :`<td class="tr tm ${isM?(r.adj<0?'vr':'vg'):''}">${r.adj<0?'-':''}${fmt(r.adj)}</td>`;
+    t+=`<tr class="${cls}"><td class="tmu">${r.l}${pctStr}</td><td class="tr tm ${isM?(r.b<0?'vr':'vg'):''}">${r.b<0?'-':''}${fmt(r.b)}</td>${adjCell}<td class="tr tm ${dc}">${delta===0?'—':(delta>0?'+':'-')+fmt(Math.abs(delta))}</td></tr>`;
+  });
+  $('ov-table').innerHTML=t+'</tbody>';
+  // Lever chart
+  const ctx=$('ov-chart'); if(!ctx) return;
+  if(activeCharts.ov) activeCharts.ov.destroy();
+  activeCharts.ov=new Chart(ctx,{type:'bar',data:{labels:[IND.tRev,IND.tCogs,IND.tLabor,IND.tOpex,'Net'],datasets:[
+    {label:'Current',data:[S.revenue,S.cogs,S.labor,S.opex,a.baseNet].map(Math.round),backgroundColor:'rgba(42,92,69,.2)',borderColor:'rgba(42,92,69,.4)',borderWidth:1.5,borderRadius:3,borderSkipped:false},
+    {label:'Adjusted',data:[a.adjRev,a.adjCogs,a.adjLabor,a.adjOpex,a.adjNet].map(Math.round),backgroundColor:a.adjGMp>a.baseGMp?'rgba(42,92,69,.65)':'rgba(158,43,43,.5)',borderRadius:3,borderSkipped:false},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+c.parsed.y.toLocaleString()}}},scales:{x:{ticks:{color:'#8f8b87',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#8f8b87',font:{size:9},callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'#ede9e3'}}}}});
+  calcReverse();
+}
+
+// ── EDITABLE CELLS ────────────────────────────────────────────────
+function startEdit(cell,key,current) {
+  if(cell.querySelector('input')) return;
+  const orig=cell.innerHTML; cell.innerHTML='';
+  const inp=document.createElement('input');
+  inp.type='number';inp.className='edit-input';inp.value=Math.round(current);
+  cell.appendChild(inp);inp.focus();inp.select();
+  const commit=()=>{const v=parseFloat(inp.value);if(!isNaN(v)&&v>=0){editOverrides[key]=v;render();}else{cell.innerHTML=orig;}};
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')commit();if(e.key==='Escape'){delete editOverrides[key];cell.innerHTML=orig;render();}});
+}
+
+// ── REVERSE CALCULATOR ────────────────────────────────────────────
+function calcReverse() {
+  const tgt=parseFloat($('tgtGM')?.value||35)/100;
+  const lever=$('revLever')?.value||'revenue';
+  if(!S.revenue||!tgt){$('revResult').textContent='—';return;}
+  const tot=S.cogs+S.labor;
+  let result='',sub='';
+  if(lever==='revenue'){
+    const needed=tot/(1-tgt), delta=needed-S.revenue;
+    result=(delta>0?'+':'-')+fmt(Math.abs(delta));
+    sub=`Contract/revenue needs to be ${fmt(needed)}/yr (currently ${fmt(S.revenue)})`;
+  } else if(lever==='cogs'){
+    const maxTot=S.revenue*(1-tgt), cogsNeeded=maxTot-S.labor, delta=S.cogs-cogsNeeded;
+    if(cogsNeeded<0){result='Not achievable via COGS alone';sub='';}
+    else{result=`-${fmt(delta)} reduction`;sub=`${IND.tCogs} needs to drop to ${fmt(cogsNeeded)}/yr`;}
+  } else if(lever==='labor'){
+    const maxTot=S.revenue*(1-tgt), laborNeeded=maxTot-S.cogs, delta=S.labor-laborNeeded;
+    if(laborNeeded<0){result='Not achievable via labor alone';sub='';}
+    else{result=`-${fmt(delta)} reduction`;sub=`${IND.tLabor} needs to drop to ${fmt(laborNeeded)}/yr`;}
+  }
+  if($('revResult'))$('revResult').textContent=result;
+  if($('revSub'))$('revSub').textContent=sub;
+}
+
+// ── CASH FLOW TOOL ────────────────────────────────────────────────
+function renderCashFlow() {
+  const el=$('tool-cashflow'); if(!el) return;
+  // Auto-derive from P&L
+  const moRev=S.revenue/12, moExp=(S.cogs+S.labor+S.opex)/12;
+  const cash=S.cashOnHand||Math.round(S.revenue*0.08);
+  const netMo=moRev-moExp;
+  const weeks=13;
+  const wRev=moRev/4.33, wExp=moExp/4.33;
+  const cashBal=[Math.round(cash)];
+  for(let i=1;i<=weeks;i++) cashBal.push(Math.round(cashBal[i-1]+(wRev-wExp)));
+  const MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const moData=S.cfMonths.length>0?S.cfMonths:MO.slice(0,6).map(m=>({month:m,revenue:Math.round(moRev),expenses:Math.round(moExp)}));
+
+  el.innerHTML=`
+    <div class="sec">Cash flow — auto-populated from your P&L</div>
+    <div class="mrow4" style="margin-bottom:1.5rem">
+      <div class="mc ${netMo>=0?'cg':'cr'}"><div class="ml">Monthly net cash flow</div><div class="mv ${netMo>=0?'vg':'vr'}">${netMo>=0?'+':''}${fmt(netMo)}</div><div class="ms">Revenue minus all expenses</div></div>
+      <div class="mc cb"><div class="ml">Cash on hand (est.)</div><div class="mv">${fmt(cash)}</div><div class="ms">Starting balance for forecast</div></div>
+      <div class="mc ${cashBal[13]>=0?'cg':'cr'}"><div class="ml">Cash in 13 weeks</div><div class="mv ${cashBal[13]>=0?'vg':'vr'}">${cashBal[13]>=0?'':'-'}${fmt(Math.abs(cashBal[13]))}</div><div class="ms">Projected balance</div></div>
+      <div class="mc cw"><div class="ml">Monthly expenses</div><div class="mv va">${fmt(moExp)}</div><div class="ms">COGS + Labor + OPEX ÷ 12</div></div>
+    </div>
+    <div class="twocol">
+      <div class="panel">
+        <div class="ptitle">13-week cash forecast</div>
+        <div class="psub">Based on your P&L revenue and expense run rate</div>
+        <div class="cw" style="height:240px"><canvas id="cf-chart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle">Month-by-month actuals</div>
+        <div class="psub">${S.cfMonths.length>0?'Pulled from your P&L monthly data':'Estimated from annual figures — import a file with monthly tabs for actuals'}</div>
+        <div style="overflow-x:auto"><table id="cf-table"></table></div>
+      </div>
+    </div>
+    <div class="sec">Adjust cash inputs</div>
+    <div class="panel" style="margin-bottom:1.75rem">
+      <div class="psub">Override the auto-calculated values if you have more precise figures</div>
+      <div class="igrid3">
+        <div class="ig"><label>Cash on hand today ($)</label><input type="number" id="cf-cash" value="${cash}" oninput="S.cashOnHand=+this.value;renderCashFlow()"></div>
+        <div class="ig"><label>Expected monthly revenue ($)</label><input type="number" id="cf-rev" value="${Math.round(moRev)}" oninput="S.revenue=+this.value*12;renderCashFlow()"></div>
+        <div class="ig"><label>Expected monthly expenses ($)</label><input type="number" id="cf-exp" value="${Math.round(moExp)}" oninput=""></div>
+      </div>
+    </div>`;
+
+  // Weekly chart
+  const ctx=$('cf-chart'); if(!ctx) return;
+  if(activeCharts.cf) activeCharts.cf.destroy();
+  activeCharts.cf=new Chart(ctx,{type:'line',data:{labels:['Now',...Array.from({length:weeks},(_,i)=>`Wk ${i+1}`)],datasets:[
+    {label:'Cash balance',data:cashBal,borderColor:'#2a5c45',backgroundColor:'rgba(42,92,69,.08)',fill:true,tension:.3,pointRadius:3,borderWidth:2},
+    {label:'Break-even',data:Array(14).fill(0),borderColor:'rgba(158,43,43,.4)',borderDash:[5,5],fill:false,pointRadius:0,borderWidth:1.5},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+c.parsed.y.toLocaleString()}}},scales:{x:{ticks:{color:'#8f8b87',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#8f8b87',font:{size:9},callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'#ede9e3'}}}}});
+
+  // Monthly table
+  let tbl=`<thead><tr><th>Month</th><th class="tr">Revenue</th><th class="tr">Expenses</th><th class="tr">Net</th></tr></thead><tbody>`;
+  moData.forEach(m=>{const net=(m.revenue||0)-(m.expenses||0);tbl+=`<tr><td class="tmu">${m.month}</td><td class="tr tm vg">${fmt(m.revenue)}</td><td class="tr tm vr">${fmt(m.expenses)}</td><td class="tr tm ${net>=0?'vg':'vr'}">${net>=0?'+':'-'}${fmt(Math.abs(net))}</td></tr>`;});
+  $('cf-table').innerHTML=tbl+'</tbody>';
+}
+
+// ── BREAK-EVEN TOOL ───────────────────────────────────────────────
+function renderBreakEven() {
+  const el=$('tool-breakeven'); if(!el) return;
+  // Auto-derive: fixed = OPEX/12, variable = COGS% of revenue
+  const fc=S.fixedCosts||Math.round(S.opex/12);
+  const vp=S.variableCostPct||Math.round(S.cogs/Math.max(S.revenue,1)*100);
+  const pu=S.pricePerUnit||Math.round(S.revenue/12);
+  const contribM=pu*(1-vp/100);
+  const beUnits=contribM>0?Math.ceil(fc/contribM):0;
+  const beRev=beUnits*pu;
+  const moRev=S.revenue/12;
+  const above=moRev-beRev;
+
+  el.innerHTML=`
+    <div class="sec">Break-even — auto-calculated from your P&L</div>
+    <div class="mrow4" style="margin-bottom:1.5rem">
+      <div class="mc cw"><div class="ml">Monthly fixed costs</div><div class="mv va">${fmt(fc)}</div><div class="ms">OPEX ÷ 12 (auto)</div></div>
+      <div class="mc cw"><div class="ml">Variable cost %</div><div class="mv va">${vp}%</div><div class="ms">COGS ÷ Revenue (auto)</div></div>
+      <div class="mc cy" style="border-color:#e8d098"><div class="ml">Break-even revenue/mo</div><div class="mv va">${beRev>0?fmt(beRev):'—'}</div><div class="ms">${beUnits>0?Math.ceil(beUnits).toLocaleString()+' units needed':''}</div></div>
+      <div class="mc ${above>=0?'cg':'cr'}"><div class="ml">You are</div><div class="mv ${above>=0?'vg':'vr'}">${above>=0?'+':''}${fmt(above)}/mo</div><div class="ms">${above>=0?'above break-even':'below break-even'}</div></div>
+    </div>
+    <div class="twocol">
+      <div class="panel">
+        <div class="ptitle">Break-even chart</div>
+        <div class="psub">Where your revenue line crosses total costs</div>
+        <div class="cw" style="height:260px"><canvas id="be-chart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle">Adjust break-even inputs</div>
+        <div class="psub">Override the auto-calculated values for more precision</div>
+        <div class="ig"><label>Monthly fixed costs ($)</label><input type="number" id="be-fc" value="${fc}" oninput="S.fixedCosts=+this.value;renderBreakEven()"></div>
+        <div class="ig"><label>Variable cost as % of revenue</label><input type="number" id="be-vp" value="${vp}" min="0" max="99" oninput="S.variableCostPct=+this.value;renderBreakEven()"></div>
+        <div class="ig"><label>Price per unit / per sale ($)</label><input type="number" id="be-pu" value="${pu}" oninput="S.pricePerUnit=+this.value;renderBreakEven()"></div>
+        ${above<0?`<div class="ic bad" style="margin-top:.5rem"><div class="ic-icon">⚠</div><div><div class="ic-title">Below break-even</div><div class="ic-body">You need ${fmt(Math.abs(above))} more revenue per month or ${fmt(Math.abs(above)*12)}/yr to cover costs. Use the Pricing tool to find the right price point.</div></div></div>`:''}
+        ${above>=0?`<div class="ic good" style="margin-top:.5rem"><div class="ic-icon">✓</div><div><div class="ic-title">Above break-even by ${fmt(above)}/mo</div><div class="ic-body">Each additional unit sold generates ${fmt(contribM)} in contribution margin toward profit.</div></div></div>`:''}
+      </div>
+    </div>`;
+
+  const ctx=$('be-chart'); if(!ctx||!pu||!fc) return;
+  const maxU=Math.ceil(beUnits*2.5)||50;
+  const pts=Array.from({length:20},(_,i)=>Math.round(i*maxU/19));
+  if(activeCharts.be) activeCharts.be.destroy();
+  activeCharts.be=new Chart(ctx,{type:'line',data:{labels:pts,datasets:[
+    {label:'Revenue',data:pts.map(u=>Math.round(u*pu)),borderColor:'#2a5c45',fill:false,tension:0,pointRadius:0,borderWidth:2},
+    {label:'Total Cost',data:pts.map(u=>Math.round(fc+u*pu*vp/100)),borderColor:'#9e2b2b',fill:false,tension:0,pointRadius:0,borderWidth:2},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5c5954',font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+c.parsed.y.toLocaleString()}}},scales:{x:{title:{display:true,text:'Units',color:'#8f8b87',font:{size:10}},ticks:{color:'#8f8b87',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#8f8b87',font:{size:9},callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'#ede9e3'}}}}});
+}
+
+// ── PRICING TOOL ──────────────────────────────────────────────────
+function renderPricing() {
+  const el=$('tool-pricing'); if(!el) return;
+  const cost=S.costPerUnit||Math.round((S.cogs+S.labor)/12);
+  const tgt=(S.targetMargin||Math.round(IND.gmB*100));
+  const targetPrice=cost>0?Math.round(cost/(1-tgt/100)):0;
+  const comp=S.competitorPrice||0;
+  const compMargin=comp>0&&cost>0?Math.round((comp-cost)/comp*100):0;
+  const moRev=S.revenue/12, moUnits=moRev/Math.max(targetPrice||moRev,1);
+
+  el.innerHTML=`
+    <div class="sec">Pricing analyzer — based on your cost structure</div>
+    <div class="mrow4" style="margin-bottom:1.5rem">
+      <div class="mc cw"><div class="ml">Your cost per unit/mo</div><div class="mv va">${fmt(cost)}</div><div class="ms">COGS + Labor ÷ 12 (auto)</div></div>
+      <div class="mc ${targetPrice>0?'cg':''}"><div class="ml">Price for ${tgt}% margin</div><div class="mv vg">${targetPrice>0?fmt(targetPrice):'Set cost'}</div><div class="ms">Your target price</div></div>
+      <div class="mc ${comp>0?(comp>=targetPrice?'cg':'cr'):'cb'}"><div class="ml">Competitor price</div><div class="mv ${comp>0?(comp>=targetPrice?'vg':'vr'):'vb'}">${comp>0?fmt(comp):'Not set'}</div><div class="ms">${comp>0?`Est. ${compMargin}% margin`:'Enter below'}</div></div>
+      <div class="mc cb"><div class="ml">Est. units/mo at target price</div><div class="mv vb">${targetPrice>0?Math.round(moRev/targetPrice).toLocaleString():'—'}</div><div class="ms">To match current revenue</div></div>
+    </div>
+    <div class="twocol">
+      <div class="panel">
+        <div class="ptitle">Pricing inputs</div>
+        <div class="psub">Adjust to model different price points</div>
+        <div class="ig"><label>Your cost per unit / per service ($) <span style="font-weight:400;color:var(--sub)">— auto from P&L</span></label><input type="number" id="pr-cost" value="${cost}" oninput="S.costPerUnit=+this.value;renderPricing()"></div>
+        <div class="ig"><label>Target gross margin %</label><input type="number" id="pr-tgt" value="${tgt}" min="1" max="90" oninput="S.targetMargin=+this.value;renderPricing()"></div>
+        <div class="ig"><label>Competitor price ($)</label><input type="number" id="pr-comp" value="${comp||''}" placeholder="Optional" oninput="S.competitorPrice=+this.value;renderPricing()"></div>
+        <hr>
+        <div style="font-size:12px;font-weight:500;color:var(--mut);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.07em">Pricing tier comparison</div>
+        <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr auto;gap:6px;margin-bottom:5px">
+          <span style="font-size:10px;color:var(--sub);font-weight:500;text-transform:uppercase">Tier name</span>
+          <span style="font-size:10px;color:var(--sub);font-weight:500;text-transform:uppercase">Price ($)</span>
+          <span style="font-size:10px;color:var(--sub);font-weight:500;text-transform:uppercase">Units/mo</span>
+          <span></span>
+        </div>
+        <div id="pr-tiers"></div>
+        <span class="addbtn" onclick="addPrTier()">+ Add pricing tier</span>
+      </div>
+      <div>
+        <div class="panel" style="margin-bottom:16px">
+          <div class="ptitle">Margin by price point</div>
+          <div class="cw" style="height:200px"><canvas id="pr-chart"></canvas></div>
+        </div>
+        <div class="panel"><table id="pr-table"></table></div>
+      </div>
+    </div>`;
+
+  buildPrTiers();
+  renderPricingChart(cost,tgt);
+}
+
+let prTiers=[];
+function buildPrTiers() {
+  const el=$('pr-tiers'); if(!el) return;
+  el.innerHTML='';
+  prTiers.forEach((p,i)=>{
+    const d=document.createElement('div');
+    d.style.cssText='display:grid;grid-template-columns:1.3fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:end';
+    d.innerHTML=`<input type="text" placeholder="e.g. Basic" value="${esc(p.name)}" oninput="prTiers[${i}].name=this.value" style="background:var(--bg);border:1px solid var(--bdr);border-radius:6px;padding:5px 8px;font-size:12px;font-family:var(--sans);outline:none">
+      <input type="number" placeholder="0" value="${p.price||''}" oninput="prTiers[${i}].price=+this.value;renderPricingTable()" style="background:var(--bg);border:1px solid var(--bdr);border-radius:6px;padding:5px 8px;font-size:12px;font-family:var(--mono);outline:none">
+      <input type="number" placeholder="0" value="${p.units||''}" oninput="prTiers[${i}].units=+this.value;renderPricingTable()" style="background:var(--bg);border:1px solid var(--bdr);border-radius:6px;padding:5px 8px;font-size:12px;font-family:var(--mono);outline:none">
+      <button class="rmbtn" onclick="prTiers.splice(${i},1);buildPrTiers();renderPricingTable()">×</button>`;
+    el.appendChild(d);
+  });
+  renderPricingTable();
+}
+function addPrTier(){prTiers.push({name:'',price:0,units:0});buildPrTiers();}
+function renderPricingTable(){
+  const tbl=$('pr-table'); if(!tbl||!prTiers.length) return;
+  const cost=S.costPerUnit||Math.round((S.cogs+S.labor)/12);
+  const tgt=(S.targetMargin||Math.round(IND.gmB*100))/100;
+  let t=`<thead><tr><th>Tier</th><th class="tr">Price</th><th class="tr">Units/mo</th><th class="tr">Monthly rev</th><th class="tr">Margin</th><th class="tr">Monthly profit</th></tr></thead><tbody>`;
+  prTiers.forEach(p=>{
+    if(!p.price) return;
+    const rev=p.price*(p.units||0), margin=cost>0?(p.price-cost)/p.price:0, profit=(p.price-cost)*(p.units||0);
+    t+=`<tr><td class="tmu">${esc(p.name)||'—'}</td><td class="tr tm">${fmt(p.price)}</td><td class="tr tm">${(p.units||0).toLocaleString()}</td><td class="tr tm vg">${fmt(rev)}</td><td class="tr tm ${margin>=tgt?'vg':'vr'}">${pc(margin)}</td><td class="tr tm ${profit>=0?'vg':'vr'}">${profit>=0?'+':''}${fmt(profit)}</td></tr>`;
+  });
+  tbl.innerHTML=t+'</tbody>';
+}
+function renderPricingChart(cost,tgt){
+  const ctx=$('pr-chart'); if(!ctx||!cost) return;
+  const prices=Array.from({length:10},(_,i)=>Math.round(cost*(1+i*0.15)));
+  const margins=prices.map(p=>Math.round((p-cost)/p*100));
+  if(activeCharts.pr) activeCharts.pr.destroy();
+  activeCharts.pr=new Chart(ctx,{type:'bar',data:{labels:prices.map(p=>'$'+p),datasets:[{label:'Margin %',data:margins,backgroundColor:margins.map(m=>m>=tgt?'rgba(42,92,69,.7)':'rgba(122,79,0,.4)'),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`Margin: ${c.parsed.y}%`}}},scales:{x:{ticks:{color:'#8f8b87',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#8f8b87',font:{size:9},callback:v=>v+'%'},grid:{color:'#ede9e3'}}}}});
+}
+
+// ── LABOR / STAFF TOOL ────────────────────────────────────────────
+function renderLabor() {
+  const el=$('tool-labor'); if(!el) return;
+  const salTotal=gSal(), mspTotal=gMsp(), moRev=S.revenue/12;
+  const laborPct=S.revenue?S.labor/S.revenue:0;
+
+  el.innerHTML=`
+    <div class="sec">Labor & staff detail — from your P&L</div>
+    <div class="mrow4" style="margin-bottom:1.5rem">
+      <div class="mc ${laborPct<=IND.laborB?'cg':'cw'}"><div class="ml">Labor % of revenue</div><div class="mv ${laborPct<=IND.laborB?'vg':'va'}">${pc(laborPct)}</div><div class="ms">Target ≤${pc(IND.laborB)} for ${IND.label}</div></div>
+      <div class="mc cb"><div class="ml">Total annual labor</div><div class="mv">${fmt(S.labor)}</div><div class="ms">${fmt(S.labor/12)}/mo</div></div>
+      <div class="mc ${salTotal>0?'cw':''}"><div class="ml">Staff salaries</div><div class="mv ${salTotal>0?'va':''}">${salTotal>0?fmt(salTotal):'—'}</div><div class="ms">${salTotal>0?S.staff.length+' people listed':S.labor>0?'Add staff sheet to P&L file':'No data'}</div></div>
+      <div class="mc ${mspTotal>0?'cw':''}"><div class="ml">MSP / Contractors</div><div class="mv ${mspTotal>0?'va':''}">${mspTotal>0?fmt(mspTotal):'—'}</div><div class="ms">${mspTotal>0?S.mspItems.length+' resource(s)':'Not found in file'}</div></div>
+    </div>
+    <div class="twocol">
+      <div class="panel">
+        <div class="ptitle">Staff salary detail</div>
+        <div class="psub">${S.staff.length>0?'Pulled from your Salaries/Staff sheet':'Import a file with a Salaries or Staff sheet to see detail'}</div>
+        <table id="sal-table"></table>
+        <hr>
+        <span class="addbtn" onclick="addStaff()">+ Add person manually</span>
+      </div>
+      <div class="panel">
+        <div class="ptitle">MSP / Contractor detail</div>
+        <div class="psub">${S.mspItems.length>0?'Pulled from your MSP/Contractors sheet':'Import a file with an MSP or Contractors sheet to see detail'}</div>
+        <table id="msp-table"></table>
+        <hr>
+        <span class="addbtn" onclick="addMspItem()">+ Add contractor manually</span>
+      </div>
+    </div>
+    <div class="sec">Labor cost chart</div>
+    <div class="panel" style="margin-bottom:1.75rem">
+      <div class="cw" style="height:200px"><canvas id="lb-chart"></canvas></div>
+    </div>`;
+
+  renderSalTable();
+  renderMspTable();
+  renderLaborChart();
+}
+
+function renderSalTable() {
+  const tbl=$('sal-table'); if(!tbl) return;
+  const total=gSal();
+  let t=`<thead><tr><th>Name</th><th class="tr">Base</th><th class="tr">Total comp</th><th class="tr">% of labor</th></tr></thead><tbody>`;
+  S.staff.forEach(s=>{
+    const pct=total?Math.round((s.total||0)/total*100)+'%':'—';
+    t+=`<tr><td class="tmu">${esc(s.name||'—')}</td><td class="tr tm">${fmt(s.base||0)}</td><td class="tr tm">${fmt(s.total||0)}</td><td class="tr tm">${pct}</td></tr>`;
+  });
+  t+=`<tr class="ttot"><td>Total</td><td></td><td class="tr tm">${fmt(total)}</td><td></td></tr>`;
+  tbl.innerHTML=t+'</tbody>';
+}
+
+function renderMspTable() {
+  const tbl=$('msp-table'); if(!tbl) return;
+  const total=gMsp();
+  let t=`<thead><tr><th>Resource</th><th class="tr">Hrs/mo</th><th class="tr">Rate</th><th class="tr">Annual est.</th><th class="tr">% of MSP</th></tr></thead><tbody>`;
+  S.mspItems.forEach(m=>{
+    const pct=total?Math.round(m.annEst/total*100)+'%':'—';
+    const tag=total&&m.annEst/total>.3?'<span class="tag tag-top">top</span>':'';
+    t+=`<tr><td class="tmu">${esc(m.name||'—')}${tag}</td><td class="tr tm">${m.hrs>0?m.hrs:'—'}</td><td class="tr tm">${m.rate>0?'$'+m.rate.toFixed(2):'—'}</td><td class="tr tm">${fmt(m.annEst)}</td><td class="tr tm">${pct}</td></tr>`;
+  });
+  if(S.mspItems.length) t+=`<tr class="ttot"><td>Total</td><td></td><td></td><td class="tr tm">${fmt(total)}</td><td></td></tr>`;
+  tbl.innerHTML=t+'</tbody>';
+}
+
+function renderLaborChart() {
+  const ctx=$('lb-chart'); if(!ctx) return;
+  const items=[
+    ...S.staff.map(s=>({name:s.name||'Staff',val:s.total||0})),
+    ...S.mspItems.map(m=>({name:m.name||'Contractor',val:m.annEst||0})),
+  ].filter(x=>x.val>0).sort((a,b)=>b.val-a.val).slice(0,8);
+  if(!items.length && S.labor>0) items.push({name:'Labor (combined)',val:S.labor});
+  const colors=['#2a5c45','#7a4f00','#1a3a70','#9e2b2b','#1a5e38','#5a2e8a','#3a7a5c','#c4beb8'];
+  if(activeCharts.lb) activeCharts.lb.destroy();
+  activeCharts.lb=new Chart(ctx,{type:'doughnut',data:{labels:items.map(i=>i.name),datasets:[{data:items.map(i=>i.val),backgroundColor:items.map((_,i)=>colors[i%colors.length]),borderWidth:2,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#5c5954',font:{size:11},boxWidth:12}},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.parsed)}/yr`}}}}});
+}
+
+function addStaff(){S.staff.push({name:'',base:0,total:0});renderLabor();}
+function addMspItem(){S.mspItems.push({name:'',hrs:0,rate:0,annEst:0});renderLabor();}
+
+// ── TAX TOOL ──────────────────────────────────────────────────────
+function renderTax() {
+  const el=$('tool-tax'); if(!el) return;
+  const profit=S.revenue-(S.cogs+S.labor+S.opex);
+  const other=S.otherIncome||0;
+  const totalInc=profit+other;
+  const seTax=Math.max(0,profit*0.9235*0.153);
+  const seDeduct=seTax/2;
+  const stdDed=S.filingStatus==='married_joint'?29200:14600;
+  const taxable=Math.max(0,totalInc-seDeduct-stdDed);
+  const brackets=S.filingStatus==='married_joint'?[[23200,.10],[94300,.12],[201050,.22],[383900,.24],[487450,.32],[731200,.35],[Infinity,.37]]:[[11600,.10],[47150,.12],[100525,.22],[191950,.24],[243725,.32],[609350,.35],[Infinity,.37]];
+  let fedTax=0,rem=taxable,prev=0;
+  brackets.forEach(([lim,rate])=>{const chunk=Math.min(rem,lim-prev);fedTax+=chunk*rate;rem-=chunk;prev=lim;if(rem<=0)return;});
+  const stateTax=Math.max(0,profit*(S.stateRate||5)/100);
+  const total=fedTax+seTax+stateTax;
+  const qtr=total/4;
+  const paid=S.ytdTaxPaid||0;
+  const owed=total-paid;
+  const effRate=totalInc>0?total/totalInc:0;
+
+  el.innerHTML=`
+    <div class="sec">Tax estimate — based on your P&L profit</div>
+    <div class="mrow4" style="margin-bottom:1.5rem">
+      <div class="mc cw"><div class="ml">Est. annual tax liability</div><div class="mv va">${fmt(total)}</div><div class="ms">Federal + SE + State</div></div>
+      <div class="mc cw"><div class="ml">Quarterly payment</div><div class="mv va">${fmt(qtr)}</div><div class="ms">Every 3 months</div></div>
+      <div class="mc cw"><div class="ml">Effective tax rate</div><div class="mv va">${pc(effRate)}</div><div class="ms">Set aside this % of every dollar</div></div>
+      <div class="mc ${owed>0?'cr':'cg'}"><div class="ml">${owed>0?'Still owed':'Overpaid'}</div><div class="mv ${owed>0?'vr':'vg'}">${fmt(Math.abs(owed))}</div><div class="ms">After ${fmt(paid)} already paid</div></div>
+    </div>
+    <div class="twocol">
+      <div class="panel">
+        <div class="ptitle">Adjust tax inputs</div>
+        <div class="psub">Profit is auto-calculated from your P&L. Adjust personal details below.</div>
+        <div class="ig"><label>Filing status</label>
+          <select id="tx-status" oninput="S.filingStatus=this.value;renderTax()">
+            <option value="single" ${S.filingStatus==='single'?'selected':''}>Single</option>
+            <option value="married_joint" ${S.filingStatus==='married_joint'?'selected':''}>Married Filing Jointly</option>
+          </select>
+        </div>
+        <div class="ig"><label>Other personal income ($) — salary, investments</label><input type="number" value="${S.otherIncome||0}" oninput="S.otherIncome=+this.value;renderTax()"></div>
+        <div class="ig"><label>State tax rate (%)</label><input type="number" value="${S.stateRate||5}" oninput="S.stateRate=+this.value;renderTax()"></div>
+        <div class="ig"><label>Tax payments already made this year ($)</label><input type="number" value="${S.ytdTaxPaid||0}" oninput="S.ytdTaxPaid=+this.value;renderTax()"></div>
+        <div class="ic warn" style="margin-top:.75rem"><div class="ic-icon">💡</div><div><div class="ic-title">Set aside ${pc(Math.min(.35,effRate*1.1))} of every dollar</div><div class="ic-body">Move this percentage of all revenue to a separate tax savings account immediately when it arrives. This avoids the year-end tax bill surprise.</div></div></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle">Quarterly payment schedule</div>
+        <div class="psub">When to pay and how much — based on your P&L</div>
+        <table id="tx-table"></table>
+        <hr>
+        <div style="font-size:12px;color:var(--mut);line-height:1.6">
+          <strong style="color:var(--txt)">Tax breakdown:</strong><br>
+          Self-employment tax: ${fmt(seTax)}<br>
+          Federal income tax: ${fmt(fedTax)}<br>
+          State tax (${S.stateRate||5}%): ${fmt(stateTax)}
+        </div>
+      </div>
+    </div>`;
+
+  const qtrs=[['Q1','April 15'],['Q2','June 17'],['Q3','September 16'],['Q4','January 15']];
+  let t=`<thead><tr><th>Quarter</th><th class="tr">Due</th><th class="tr">Amount</th><th class="tr">Status</th></tr></thead><tbody>`;
+  qtrs.forEach(([q,due],i)=>{const cp=Math.min(paid,(i+1)*qtr),tp=cp-Math.min(paid,i*qtr),st=tp>=qtr?'✓ Paid':tp>0?'Partial':'Due';t+=`<tr><td class="tmu">${q}</td><td class="tmu">${due}</td><td class="tr tm">${fmt(qtr)}</td><td class="tr ${st.includes('✓')?'vg':st==='Partial'?'va':'vr'}">${st}</td></tr>`;});
+  $('tx-table').innerHTML=t+'</tbody>';
+}
+
+// ── RUNWAY TOOL ───────────────────────────────────────────────────
+function renderRunway() {
+  const el=$('tool-runway'); if(!el) return;
+  const cash=S.currentCash||S.cashOnHand||Math.round(S.revenue*0.08);
+  const burn=S.avgMonthlyBurn||Math.round((S.cogs+S.labor+S.opex)/12);
+  const rev=S.revenue/12;
+  const netBurn=burn-rev;
+  const runway=netBurn>0?cash/netBurn:Infinity;
+  const upPct=+(document.getElementById('sr-rw-up')?.value||20)/100;
+  const downPct=+(document.getElementById('sr-rw-down')?.value||20)/100;
+
+  const months=Array.from({length:13},(_,i)=>i===0?'Now':`Mo ${i}`);
+  const base=[cash],best=[cash],worst=[cash];
+  for(let i=1;i<=12;i++){base.push(Math.round(Math.max(0,base[i-1]+(rev-burn))));best.push(Math.round(Math.max(0,best[i-1]+(rev*(1+upPct)-burn))));worst.push(Math.round(Math.max(0,worst[i-1]+(rev*(1-downPct)-burn))));}
+
+  el.innerHTML=`
+    <div class="sec">Runway — auto-calculated from your P&L</div>
+    <div class="mrow4" style="margin-bottom:1.5rem">
+      <div class="mc ${runway>12||runway===Infinity?'cg':runway>6?'cw':'cr'}"><div class="ml">Runway (base case)</div><div class="mv ${runway>12||runway===Infinity?'vg':runway>6?'va':'vr'}">${runway===Infinity?'∞':runway.toFixed(1)+' mo'}</div><div class="ms">${runway===Infinity?'Cash flow positive':'At current burn rate'}</div></div>
+      <div class="mc ${netBurn<=0?'cg':'cr'}"><div class="ml">Monthly net burn</div><div class="mv ${netBurn<=0?'vg':'vr'}">${netBurn<=0?'+':'-'}${fmt(Math.abs(netBurn))}</div><div class="ms">${netBurn<=0?'Cash flow positive':'Burning monthly'}</div></div>
+      <div class="mc cb"><div class="ml">Monthly expenses</div><div class="mv">${fmt(burn)}</div><div class="ms">COGS + Labor + OPEX ÷ 12</div></div>
+      <div class="mc cb"><div class="ml">Monthly revenue</div><div class="mv">${fmt(rev)}</div><div class="ms">Annual ÷ 12</div></div>
+    </div>
+    <div class="twocol">
+      <div class="panel">
+        <div class="ptitle">12-month cash projection</div>
+        <div class="psub">Base · Best · Worst case scenarios</div>
+        <div class="cw" style="height:240px"><canvas id="rw-chart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="ptitle">Scenario inputs</div>
+        <div class="psub">Adjust to model different outcomes</div>
+        <div class="ig"><label>Cash on hand today ($) — auto from P&L</label><input type="number" id="rw-cash" value="${cash}" oninput="S.currentCash=+this.value;renderRunway()"></div>
+        <div class="ig"><label>Monthly burn ($) — auto from P&L</label><input type="number" id="rw-burn" value="${burn}" oninput="S.avgMonthlyBurn=+this.value;renderRunway()"></div>
+        <hr>
+        <div class="sg"><div class="sh"><label class="sl">Best case revenue change</label><span class="sv" id="sv-rw-up">+20%</span></div><input type="range" id="sr-rw-up" min="0" max="100" step="5" value="20" oninput="document.getElementById('sv-rw-up').textContent='+'+this.value+'%';renderRunway()"></div>
+        <div class="sg"><div class="sh"><label class="sl">Worst case revenue change</label><span class="sv" id="sv-rw-down">-20%</span></div><input type="range" id="sr-rw-down" min="0" max="80" step="5" value="20" oninput="document.getElementById('sv-rw-down').textContent='-'+this.value+'%';renderRunway()"></div>
+        ${runway<6&&runway>0?`<div class="ic bad"><div class="ic-icon">🔴</div><div><div class="ic-title">${runway.toFixed(1)} months of runway — act now</div><div class="ic-body">Reduce monthly burn or accelerate revenue collection immediately. Do not wait until you are at 1 month.</div></div></div>`:''}
+        ${runway>=6&&runway<12?`<div class="ic warn"><div class="ic-icon">⚠</div><div><div class="ic-title">${runway.toFixed(1)} months of runway — plan ahead</div><div class="ic-body">Explore revenue growth or expense reduction. Start the conversation now — don't wait until you're at 3 months.</div></div></div>`:''}
+        ${runway===Infinity?`<div class="ic good"><div class="ic-icon">✓</div><div><div class="ic-title">Cash flow positive</div><div class="ic-body">Revenue covers expenses. Build your cash reserve to at least 6 months of expenses as a safety cushion.</div></div></div>`:''}
+      </div>
+    </div>`;
+
+  const ctx=$('rw-chart'); if(!ctx) return;
+  if(activeCharts.rw) activeCharts.rw.destroy();
+  activeCharts.rw=new Chart(ctx,{type:'line',data:{labels:months,datasets:[
+    {label:'Base case',data:base,borderColor:'#2a5c45',backgroundColor:'rgba(42,92,69,.06)',fill:true,tension:.3,pointRadius:3,borderWidth:2},
+    {label:'Best case',data:best,borderColor:'#1a5e38',borderDash:[4,4],fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
+    {label:'Worst case',data:worst,borderColor:'#9e2b2b',borderDash:[4,4],fill:false,tension:.3,pointRadius:2,borderWidth:1.5},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#5c5954',font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': $'+c.parsed.y.toLocaleString()}}},scales:{x:{ticks:{color:'#8f8b87',font:{size:9}},grid:{display:false}},y:{ticks:{color:'#8f8b87',font:{size:9},callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'#ede9e3'}}}}});
+}
+
+// ── AI ANALYSIS ───────────────────────────────────────────────────
+async function runAI() {
+  const btn=$('aiBtn'),loading=$('aiLoading'),out=$('aiOut');
+  btn.disabled=true;loading.classList.add('show');out.classList.remove('show');out.innerHTML='';
+  const a=getAdj();
+  const prompt=`Analyze the finances of this ${IND.label} business: "${S.bizName||'the business'}".
+
+P&L (annual):
+- ${IND.tRev}: $${Math.round(S.revenue).toLocaleString()}
+- ${IND.tCogs}: $${Math.round(S.cogs).toLocaleString()}
+- ${IND.tLabor}: $${Math.round(S.labor).toLocaleString()}
+- Gross margin: $${Math.round(a.baseGM).toLocaleString()} (${pc(a.baseGMp)}) — benchmark ${pc(IND.gmB)}
+- ${IND.tOpex}: $${Math.round(S.opex).toLocaleString()}
+- Net margin: $${Math.round(a.baseNet).toLocaleString()} (${pc(S.revenue?a.baseNet/S.revenue:0)}) — benchmark ${pc(IND.netB)}
+${S.staff.length?'\nStaff:\n'+S.staff.map(s=>`- ${s.name}: $${Math.round(s.total||0).toLocaleString()}`).join('\n'):''}
+${S.mspItems.length?'\nMSP/Contractors:\n'+S.mspItems.map(m=>`- ${m.name}: ~$${Math.round(m.annEst||0).toLocaleString()}/yr`).join('\n'):''}
+${S.notes?'\nNotes: '+S.notes:''}
+
+Give: (1) honest health assessment in 2 sentences, (2) top 3 risks as bullet points, (3) 3 specific prioritized actions this month. Label each section clearly. Be direct — this owner has no CFO.`;
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:900,system:'You are a CFO advisor for small business owners. Give direct actionable advice in plain language. Bold key terms with **asterisks**. Label each section with a clear header like "**Financial health**", "**Key risks**", "**Actions this month**". No jargon.',messages:[{role:'user',content:prompt}]})});
+    if(!res.ok) throw new Error('API '+res.status);
+    const data=await res.json();
+    renderAIText(data.content?.[0]?.text||'No response.',out);
+  } catch {
+    renderAIText(buildFallback(a),out);
+  }
+  loading.classList.remove('show');out.classList.add('show');btn.disabled=false;
+}
+
+function renderAIText(text,el){
+  const sections=[];let cur={label:'',body:[]};
+  text.split('\n').forEach(line=>{
+    const h=line.match(/^\*\*([^*]+)\*\*[:\s]*$/);
+    if(h){if(cur.body.length||cur.label)sections.push({...cur});cur={label:h[1].replace(/:/,''),body:[]};}
+    else if(line.trim()) cur.body.push(line.trim());
+  });
+  if(cur.body.length||cur.label)sections.push(cur);
+  if(sections.length<=1&&sections[0]?.label===''){
+    const labels=['Financial health','Key risks','Actions this month'];
+    el.innerHTML=text.split('\n\n').filter(p=>p.trim()).map((p,i)=>{
+      const isList=p.includes('\n- ')||p.trim().startsWith('- ');
+      const body=isList?'<ul>'+p.split('\n').filter(l=>l.trim()).map(l=>`<li>${l.replace(/^-\s*/,'').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</li>`).join('')+'</ul>':'<p>'+p.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')+'</p>';
+      return `<div class="ai-section"><div class="ai-section-label">${labels[i]||'Analysis'}</div><div class="ai-section-body">${body}</div></div>`;
+    }).join('');
+    return;
+  }
+  el.innerHTML=sections.map(s=>{
+    const isList=s.body.some(l=>l.startsWith('- '));
+    const body=isList?'<ul>'+s.body.filter(l=>l.trim()).map(l=>l.startsWith('- ')?`<li>${l.slice(2).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</li>`:`<p>${l.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`).join('')+'</ul>':s.body.map(l=>`<p>${l.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</p>`).join('');
+    return `<div class="ai-section">${s.label?`<div class="ai-section-label">${s.label}</div>`:''}<div class="ai-section-body">${body}</div></div>`;
+  }).filter(s=>s.includes('ai-section-body')).join('');
+}
+
+function buildFallback(a){
+  const gp=(a.baseGMp*100).toFixed(1),np=(S.revenue?a.baseNet/S.revenue*100:0).toFixed(1);
+  const lb=S.revenue?Math.round(S.labor/S.revenue*100):0;
+  let t=`**Financial health**\n\nGross margin at ${gp}% is ${a.baseGMp>=IND.gmB?'on target':'below the '+pc(IND.gmB)+' benchmark'} for ${IND.label}. Net margin is ${np}%${a.baseNet<0?' — the business is running at a loss and needs immediate attention':' — on target'}.`;
+  t+=`\n\n**Key risks**\n\n`;
+  const risks=[];
+  if(a.baseGMp<IND.gmB)risks.push(`- **Gross margin below benchmark (${gp}% vs ${pc(IND.gmB)} target)** — your pricing or cost structure needs attention.`);
+  if(a.baseNet<0)risks.push(`- **Net loss of ${fmt(Math.abs(a.baseNet))}** — expenses exceed revenue. The Pricing and Break-Even tools will show you the path to profitability.`);
+  if(lb>IND.laborB*100*1.3)risks.push(`- **Labor at ${lb}% of revenue** — above the ${Math.round(IND.laborB*100)}% benchmark. Review staffing efficiency.`);
+  if(!risks.length)risks.push(`- Margins are healthy. Watch for cost creep as you grow — expenses rise faster than revenue if not actively managed.`);
+  t+=risks.join('\n');
+  t+=`\n\n**Actions this month**\n\n`;
+  const acts=[];
+  if(a.baseGMp<IND.gmB)acts.push(`- **Review your pricing.** The Pricing tool shows you the exact price needed to hit ${pc(IND.gmB)} gross margin based on your costs.`);
+  if(a.baseNet<0)acts.push(`- **Run the Break-Even calculator** to see exactly how much revenue you need to stop losing money.`);
+  acts.push(`- **Set aside ${pc(Math.min(.32,(S.revenue?((a.baseGM-S.opex)*0.3)/S.revenue:.25)))} of every dollar of revenue** for taxes before spending anything else.`);
+  if(!S.currentCash)acts.push(`- **Check your cash runway.** Fill in the Runway tool to know exactly how many months of operating cash you have.`);
+  t+=acts.slice(0,3).join('\n');
+  return t;
+}
+
+// ── PERIOD HISTORY ────────────────────────────────────────────────
+const HKEY='cfovault_v1';
+function loadHist(){try{return JSON.parse(localStorage.getItem(HKEY)||'[]');}catch{return[];}}
+function saveHist(h){try{localStorage.setItem(HKEY,JSON.stringify(h));}catch{}}
+
+function savePeriod(){
+  const label=prompt('Name this period:',`${S.bizName||IND?.label||'Business'} — ${new Date().toLocaleDateString('en-US',{month:'short',year:'numeric'})}`);
+  if(!label) return;
+  const a=getAdj();
+  const snap={bizName:S.bizName,industry:S.industry,period:S.period,revenue:S.revenue,cogs:S.cogs,labor:S.labor,opex:S.opex,
+    grossMargin:a.baseGM,grossMarginPct:a.baseGMp,netMargin:a.baseNet,staff:S.staff.map(x=>({...x})),mspItems:S.mspItems.map(x=>({...x})),notes:S.notes};
+  const h=loadHist();h.unshift({id:Date.now(),label,snap});if(h.length>20)h.pop();
+  saveHist(h);renderHistBar();showToast('Period saved');
+}
+
+function renderHistBar(){
+  const h=loadHist(),chips=$('histChips');
+  if(!h.length){chips.innerHTML='<span class="hist-none">No saved periods yet</span>';return;}
+  chips.innerHTML=h.map(p=>`<span class="hchip ${activePeriod===p.id?'active':''}" onclick="selectPeriod(${p.id})">${p.label}<span class="hdel" onclick="delPeriod(event,${p.id})">×</span></span>`).join('');
+}
+
+function selectPeriod(id){activePeriod=activePeriod===id?null:id;renderHistBar();}
+function delPeriod(e,id){e.stopPropagation();const h=loadHist().filter(p=>p.id!==id);saveHist(h);if(activePeriod===id)activePeriod=null;renderHistBar();}
+
+// ── DEMO DATA ─────────────────────────────────────────────────────
+function loadDemo(){
+  if(!IND){IND={...INDS.other,key:'other'};S.industry='other';}
+  const demos={
+    restaurant:{bizName:'Rosewood Kitchen',period:'FY2026',revenue:620000,cogs:198400,labor:201500,opex:92000,cashOnHand:28000,fixedCosts:18000,variableCostPct:32,pricePerUnit:22,costPerUnit:8,targetMargin:62,competitorPrice:26,currentCash:28000,avgMonthlyBurn:38000,stateRate:6,otherIncome:0,filingStatus:'married_joint',ytdTaxPaid:0,staff:[{name:'Head Chef',base:58000,total:68000},{name:'Line Cook x2',base:34000,total:40000},{name:'FOH Manager',base:42000,total:49000},{name:'Servers x4',base:26000,total:31000}],mspItems:[],cfMonths:[{month:'Jan',revenue:46500,expenses:38200},{month:'Feb',revenue:44200,expenses:37800},{month:'Mar',revenue:52000,expenses:39500},{month:'Apr',revenue:55000,expenses:40100},{month:'May',revenue:58000,expenses:41200},{month:'Jun',revenue:61000,expenses:42000}],notes:'Sample restaurant data — strong summer season, winter months below average.'},
+    msp:{bizName:'Apex IT Solutions',period:'FY2026',revenue:520000,cogs:68000,labor:210000,opex:88000,cashOnHand:65000,fixedCosts:18000,variableCostPct:13,pricePerUnit:8500,costPerUnit:5200,targetMargin:33,competitorPrice:9200,currentCash:65000,avgMonthlyBurn:26500,stateRate:5,otherIncome:0,filingStatus:'single',ytdTaxPaid:0,staff:[{name:'IT Director',base:82000,total:98000},{name:'Systems Admin',base:55000,total:64000},{name:'Help Desk x2',base:38000,total:44000}],mspItems:[{name:'SyncTech Solutions',hrs:92,rate:65,annEst:71760},{name:'NetOps LLC',hrs:38,rate:22,annEst:10032},{name:'SecureEdge Inc',hrs:14,rate:60,annEst:10080}],cfMonths:[{month:'Jan',revenue:42000,expenses:28000},{month:'Feb',revenue:40000,expenses:27500},{month:'Mar',revenue:44000,expenses:28500},{month:'Apr',revenue:45000,expenses:29000},{month:'May',revenue:43000,expenses:28000},{month:'Jun',revenue:44000,expenses:28200}],notes:'Sample MSP account. Two institutional clients represent 70% of revenue.'},
+    agency:{bizName:'Vantage Creative Agency',period:'FY2026',revenue:890000,cogs:178000,labor:356000,opex:133500,cashOnHand:95000,fixedCosts:22000,variableCostPct:20,pricePerUnit:175,costPerUnit:65,targetMargin:55,competitorPrice:195,currentCash:95000,avgMonthlyBurn:30000,stateRate:7,otherIncome:0,filingStatus:'married_joint',ytdTaxPaid:0,staff:[{name:'Creative Director',base:82000,total:98000},{name:'Senior Designer',base:65000,total:75000},{name:'Copywriter',base:55000,total:63000},{name:'Account Mgr',base:60000,total:70000}],mspItems:[{name:'Video Contractor',hrs:20,rate:85,annEst:20400},{name:'Dev Freelancer',hrs:15,rate:95,annEst:17100}],cfMonths:[{month:'Jan',revenue:68000,expenses:52000},{month:'Feb',revenue:72000,expenses:53000},{month:'Mar',revenue:78000,expenses:54000},{month:'Apr',revenue:76000,expenses:53500},{month:'May',revenue:82000,expenses:55000},{month:'Jun',revenue:80000,expenses:54500}],notes:'Sample agency data. Retainer clients are 60% of billings.'},
+  };
+  const key=IND.key;
+  const demo=demos[key]||demos.agency;
+  Object.assign(S,demo,{industry:key});
+  prTiers=[];editOverrides={};
+  $('onboard').style.display='none';
+  showStatus([{t:'ok',m:`Sample data loaded — ${S.bizName}`},{t:'warn',m:'This is sample data. Import your real P&L file for accurate analysis.'}]);
+  go();
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────
+function exportData(){
+  const h=loadHist();
+  const payload={version:2,tool:'CFOVault',exported:new Date().toISOString(),current:S,history:h,prTiers};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`CFOVault_${(S.bizName||'data').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(url);showToast('Data exported');
+}
+
+function handleJsonImport(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      const incoming=Array.isArray(data)?data:(data.periods||data.history||[]);
+      if(data.current){Object.assign(S,data.current);IND={...INDS[S.industry||'other'],key:S.industry||'other'};}
+      if(data.prTiers)prTiers=data.prTiers;
+      if(incoming.length){const ex=loadHist(),exIds=new Set(ex.map(p=>p.id));const merged=[...incoming.filter(p=>!exIds.has(p.id)),...ex].slice(0,20);saveHist(merged);}
+      $('onboard').style.display='none';
+      showStatus([{t:'ok',m:'Data imported successfully'},{t:'warn',m:incoming.length?`${incoming.length} saved period(s) loaded`:'No period history in this file'}]);
+      go();
+    }catch{showToast('Could not read file — make sure it is a CFO Vault export');}
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function exportPDF(){
+  document.getElementById('printMeta').innerHTML=`${S.bizName||IND?.label||''} · ${S.period||''}<br>${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}`;
+  $('printHead').style.display='block';
+  window.print();
+  setTimeout(()=>$('printHead').style.display='none',500);
+}
+
+// ── RESET ─────────────────────────────────────────────────────────
+function resetApp(){
+  S={bizName:'',industry:'other',period:'',revenue:0,cogs:0,labor:0,opex:0,staff:[],mspItems:[],otherCosts:[],cashOnHand:0,fixedCosts:0,variableCostPct:0,pricePerUnit:0,costPerUnit:0,targetMargin:35,competitorPrice:0,currentCash:0,avgMonthlyBurn:0,filingStatus:'single',stateRate:5,otherIncome:0,ytdTaxPaid:0,notes:'',cfMonths:[],adjRevOverride:null,adjCogsOverride:null,adjLaborOverride:null,adjOpexOverride:null};
+  IND=null;activePeriod=null;editOverrides={};prTiers=[];activeTool='overview';
+  Object.values(activeCharts).forEach(c=>{try{c.destroy();}catch{}});activeCharts={};
+  $('content').classList.remove('on');$('onboard').style.display='block';
+  $('parseStatus').style.display='none';
+  ['btnSave','btnExportData','btnImportData','btnExport','btnReset'].forEach(id=>$(id).style.display='none');
+  document.querySelectorAll('.ind-chip').forEach(c=>c.classList.remove('sel'));
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────
+function showToast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
+</script>
+
+</body>
+</html>
